@@ -29,6 +29,7 @@ sub schema_connection ($self) {
   $self->schema_class->connect(
     $self->connect_info,
     {
+      on_connect_do  => "SET TIMEZONE TO 'UTC'",
       auto_savepoint => 1,
       quote_names    => 1,
     },

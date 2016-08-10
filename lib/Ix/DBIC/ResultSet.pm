@@ -455,13 +455,20 @@ sub _ix_check_user_properties (
 
     if ($date_fields{$prop}) {
       # Already a DateTime object (checked above)?
-      if (defined $value && ! ref $value) {
-        if (my $dt = parsedate($value)) {
-          # great, it's already valid
-          $value = $dt;
-        } else {
-          $property_error{$prop} = "invalid date value";
-          next PROP;
+      if (defined $value) {
+        if (! ref $value) {
+          if (my $dt = parsedate($value)) {
+            # great, it's already valid
+            $value = $dt;
+          } else {
+            $property_error{$prop} = "invalid date value";
+            next PROP;
+          }
+        } elsif (! $value->$_isa('Ix::DateTime')) {
+          # Make sure inserts/updates contain zulu format. This isn't strictly
+          # necessary since we configure our SQL sessions to be UTC anyway,
+          # but can't hurt and consistency is good.
+          bless $value, 'Ix::DateTime';
         }
       }
     }
