@@ -486,4 +486,52 @@ subtest "invalid sinceState" => sub {
   is($res->[0][1]{list}[0]{baked_at}->as_string, $future_str, 'time is right');
 }
 
+{
+  my $ctx = $Bakesale->get_system_context(
+    $dataset{datasets}{rjbs}
+  );
+
+  my $res = $ctx->process_request([
+    [
+      setCookies => {
+        ifInState => 11,
+        create    => {
+          yellow => { type => 'shortbread', },
+          green => { type => 'what', id => undef, },
+        },
+        update => {
+          $dataset{cookies}{1} => { type => 'sugar' },
+        },
+      },
+      'a'
+    ],
+  ]);
+
+  cmp_deeply(
+    $res,
+    [
+      [
+        cookiesSet => superhashof({
+          oldState => 11,
+          newState => 12,
+
+          created => {
+            yellow => { id => ignore(), baked_at => ignore(), expires_at => ignore() },
+          },
+          updated => [ $dataset{cookies}{1} ],
+          notCreated => {
+            green   => superhashof({
+              type => 'invalidProperties',
+              propertyErrors => { id => 'not a string' }
+            }),
+          },
+        }),
+        'a'
+      ],
+    ],
+    "we can create cookies with setCookies",
+  ) or diag explain($res);
+
+}
+
 done_testing;

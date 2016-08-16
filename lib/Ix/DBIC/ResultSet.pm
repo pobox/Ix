@@ -508,6 +508,9 @@ sub _ix_check_user_properties (
       $property_error{$prop} //=
         "null value given for field requiring a $prop_info->{$prop}{data_type}";
     } else {
+      # System context *can* pass things like id in but doesn't need to
+      next if $ctx->is_system && $prop_info->{$prop}->{default_value};
+
       $property_error{$prop} //= "no value given for required field";
     }
   }

@@ -11,7 +11,7 @@ use Sub::Exporter -setup => [ qw(
 sub email {
   return sub ($x, @) {
     # XXX Obviously bogus.
-    return if $x =~ /\A[-_a-z0-9]+\@[-._a-z0-9]+\z/i;
+    return if $x =~ /\A[-_a-z0-9.]+\@[-._a-z0-9]+\z/i;
     return "not a valid email address";
   };
 }

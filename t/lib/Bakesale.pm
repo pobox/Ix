@@ -139,6 +139,14 @@ package Bakesale {
     });
   }
 
+  sub get_system_context ($self, $dataset_id) {
+    Bakesale::Context::System->new({
+      datasetId => $dataset_id,
+      schema    => $self->schema_connection,
+      processor => $self,
+    });
+  }
+
   sub context_from_plack_request ($self, $req) {
     my $user_id = $req->cookies->{bakesaleUserId};
     return $self->get_context({ userId => $user_id // 1 });
