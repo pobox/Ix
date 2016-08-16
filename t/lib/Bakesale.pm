@@ -117,9 +117,15 @@ package Bakesale {
   with 'Ix::Processor';
 
   use Bakesale::Context;
+  use Data::GUID qw(guid_string);
 
   use experimental qw(signatures postderef);
   use namespace::autoclean;
+
+  sub file_exception_report ($self, $ctx, $exception) {
+    Carp::cluck( "EXCEPTION!!" );
+    return guid_string();
+  }
 
   sub connect_info;
   has connect_info => (

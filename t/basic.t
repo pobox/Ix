@@ -408,7 +408,7 @@ subtest "passing in a boolean" => sub {
   ) or note(explain($res->as_pairs));
 };
 
-subtest "make a recipe and a cake in one exchange" => sub {
+subtest "make a recipe and a cake in one transaction" => sub {
   my $res = $jmap_tester->request([
     [
       setCakeRecipes => {

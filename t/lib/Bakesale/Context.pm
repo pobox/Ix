@@ -48,11 +48,6 @@ package Bakesale::Context::System {
 
   sub is_system { 1 }
 
-  sub file_exception_report {
-    warn "EXCEPTION!!";
-    return guid_string();
-  }
-
   with 'Ix::Context';
 }
 

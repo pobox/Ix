@@ -75,10 +75,8 @@ has logged_exception_guids => (
   },
 );
 
-requires 'file_exception_report';
-
 sub report_exception ($ctx, $exception) {
-  my $guid = $ctx->file_exception_report($exception);
+  my $guid = $ctx->processor->file_exception_report($ctx, $exception);
   $ctx->log_exception_guid($guid);
   return $guid;
 }

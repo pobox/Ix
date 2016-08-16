@@ -26,10 +26,13 @@ has processor => (
   required => 1,
 );
 
-has _logger => (
+has log_all_transactions => (
   is  => 'ro',
-  isa => 'CodeRef',
+  isa => 'Bool',
+  default => 0,
 );
+
+sub log_transaction {}
 
 has psgi_app => (
   is  => 'ro',
@@ -41,8 +44,6 @@ has psgi_app => (
 sub to_app ($self) { $self->psgi_app }
 
 sub _build_psgi_app ($self) {
-  my $logger = $self->_logger;
-
   return sub ($env) {
     my $req = Plack::Request->new($env);
 
@@ -60,53 +61,39 @@ sub _build_psgi_app ($self) {
     }
 
     my $ctx = $self->processor->context_from_plack_request($req);
+    $req->env->{'ix.ctx'} = $ctx;
 
-    my $content = $req->raw_body;
-
-    my $request_time = Ix::DateTime->now->iso8601;
-
-    my $guid;
-    if ($logger) {
-      state $request_number;
-      $request_number++;
-      $guid = guid_string;
-      $logger->( "<<< BEGIN REQUEST $guid\n"
-               . "||| TIME: $request_time\n"
-               . "||| SEQ : $$ $request_number\n"
-               . ($content // "")
-               . "\n"
-               . ">>> END REQUEST $guid\n");
-    }
+    state $transaction_number;
+    $transaction_number++;
+    $req->env->{'ix.transaction'} = {
+      guid => guid_string(),
+      time => Ix::DateTime->now,
+      seq  => $transaction_number,
+    };
 
     my $res = eval {
       my $calls;
-      unless (eval { $calls = $self->decode_json( $content ); 1 }) {
+      unless (eval { $calls = $self->decode_json( $req->raw_body ); 1 }) {
         return [
           400,
           [
             'Content-Type', 'application/json',
             'Access-Control-Allow-Origin' => '*',
-            ($guid ? ('Ix-Request-GUID' => $guid) : ()),
           ],
           [ '{"error":"could not decode request"}' ],
         ];
       }
 
+      $req->env->{'ix.transaction'}{calls} = $calls;
       my $result  = $ctx->process_request( $calls );
       my $json    = $self->encode_json($result);
-
-      if ($logger) {
-        $logger->( "<<< BEGIN RESPONSE\n"
-                 . "$json\n"
-                 . ">>> END RESPONSE\n" );
-      }
 
       return [
         200,
         [
           'Content-Type', 'application/json',
           'Access-Control-Allow-Origin' => '*',
-          ($guid ? ('Ix-Request-GUID' => $guid) : ()),
+          'Ix-Exchange-GUID' => $req->env->{'ix.transaction'}{guid},
         ],
         [ $json ],
       ];
@@ -127,9 +114,25 @@ sub _build_psgi_app ($self) {
       ];
     }
 
-    if (my @guids = $ctx->logged_exception_guids) {
-      $env->{'psgi.errors'}->print("exception was reported: $_\n") for @guids;
+    my @error_guids = $ctx->logged_exception_guids;
+
+    if (@error_guids or $self->log_all_transactions) {
+      # We delete this so that when we stick the request into it, we don't
+      # create a reference cycle.
+      my $to_log = delete $req->env->{'ix.transaction'};
+
+      $to_log->{exceptions} = \@error_guids;
+      $to_log->{request} = $req;
+      $to_log->{response} = $res; # XXX use Plack::Response? -- rjbs, 2016-08-16
+
+      $self->log_transaction($to_log);
     }
+
+    for (@error_guids) {
+      $env->{'psgi.errors'}->print("exception was reported: $_\n")
+    }
+
+    use Data::Dumper; warn Dumper($res);
 
     return $res;
   }

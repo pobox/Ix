@@ -21,6 +21,8 @@ around handler_for => sub ($orig, $self, $method, @rest) {
   return;
 };
 
+requires 'file_exception_report';
+
 requires 'schema_class';
 
 requires 'connect_info';
