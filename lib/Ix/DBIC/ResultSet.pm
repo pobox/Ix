@@ -375,13 +375,21 @@ sub ix_create ($self, $ctx, $to_create) {
         %default_properties{ @defaults },
       };
     } else {
-      my $error = $@;
-      unless ($error->$_DOES('Ix::Error')) {
-        $error = $ctx->error(
+      my $exception = $@;
+
+      my $error;
+
+      if (! $exception->$_DOES('Ix::Error')) {
+        $error = $rclass->ix_create_error($ctx, $exception);
+
+        $error ||= $ctx->error(
           'invalidRecord', { description => "could not create" },
-          "database rejected creation", { db_error => "$@" },
+          "database rejected creation", { db_error => "$exception" },
         );
+      } else {
+        $error = $exception;
       }
+
       $result{not_created}{$id} = $error;
     }
   }
@@ -627,10 +635,22 @@ sub ix_update ($self, $ctx, $to_update) {
       push @updated, $id;
       $result{actual_updates}++ if $ok == $UPDATED;
     } else {
-      $result{not_updated}{$id} = $ctx->error(
-        'invalidRecord', { description => "could not update" },
-        "database rejected update", { db_error => "$@" },
-      );
+      my $exception = $@;
+
+      my $error;
+
+      if (! $exception->$_DOES('Ix::Error')) {
+        $error = $rclass->ix_update_error($ctx, $exception);
+
+        $error ||= $ctx->error(
+          'invalidRecord', { description => "could not update" },
+          "database rejected update", { db_error => "$exception" },
+        );
+      } else {
+        $error = $exception;
+      }
+
+      $result{not_updated}{$id} = $error;
     }
   }
 

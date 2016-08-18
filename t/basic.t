@@ -832,4 +832,73 @@ subtest "datetime field validations" => sub {
   ) or diag explain( $jmap_tester->strip_json_types( $res->as_pairs ) );
 };
 
+subtest "db exceptions" => sub {
+  # Make sure ix_create_error/update_error/destroy_error fire and work
+  my $res = $jmap_tester->request([
+    [ setUsers => {
+      create => {
+        first       => { username => 'first', },
+        second      => { username => 'second', },
+      },
+    } ],
+  ]);
+
+  my $created = $res->paragraph(0)->single('usersSet')->as_set;
+  my $first_id = $created->created_id('first');
+  my $second_id = $created->created_id('second');
+
+  ok($first_id, 'created user "first"');
+  ok($second_id, 'created user "second"');
+
+  # Now try to create duplicate user first
+  $res = $jmap_tester->request([
+    [ setUsers => {
+      create => {
+        first       => { username => 'first', },
+      },
+    } ],
+  ]);
+
+  my $err = $res->paragraph(0)
+                ->single('usersSet')
+                ->as_set
+                ->create_errors;
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types($err),
+    {
+      first => {
+        'type' => 'alreadyExists',
+        'description' => 'that username already exists during create',
+      },
+    },
+    "duplicate usernames not possible",
+  );
+
+  # Try with update
+  $res = $jmap_tester->request([
+    [ setUsers => {
+      update => {
+        $first_id => { username => 'second', },
+      },
+    } ],
+  ]);
+
+  $err = $res->paragraph(0)
+                ->single('usersSet')
+                ->as_set
+                ->update_errors;
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types($err),
+    {
+      $first_id => {
+        'type' => 'alreadyExists',
+        'description' => 'that username already exists during update',
+      },
+    },
+    "duplicate usernames not possible",
+  );
+};
+
 done_testing;
