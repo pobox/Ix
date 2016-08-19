@@ -29,6 +29,21 @@ sub ix_default_properties {
   };
 }
 
+sub ix_set_check_arg ($self, $ctx, $arg) {
+  # Tried to pass off a cake as a cookie? Throw everything out!
+  if ($arg->{create} && ref $arg->{create} eq 'HASH') {
+    for my $cookie (values $arg->{create}->%*) {
+      if ($cookie->{type} && $cookie->{type} eq 'cake') {
+        return $ctx->error(invalidArguments => {
+          descriptoin => "A cake is not a cookie",
+        });
+      }
+    }
+  }
+
+  return;
+}
+
 sub ix_update_check ($self, $ctx, $row, $arg) {
   # Can't make a half-eaten cookie into a new cookie
   if (

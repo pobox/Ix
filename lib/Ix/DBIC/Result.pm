@@ -115,6 +115,8 @@ sub ix_finalize ($class) {
   }
 }
 
+sub ix_set_check_arg { return; } # ($self, $ctx, \%arg)
+
 sub ix_get_check     { } # ($self, $ctx, \%arg)
 sub ix_create_check  { } # ($self, $ctx, \%rec)
 sub ix_update_check  { } # ($self, $ctx, $row, \%rec)

@@ -737,6 +737,11 @@ sub ix_set ($self, $ctx, $arg = {}) {
     return $ctx->error('stateMismatch');
   }
 
+  # Let consumers decide if they allow create/update/destroy or not
+  if (my $err = $rclass->ix_set_check_arg($ctx, $arg)) {
+    return $err;
+  }
+
   my %result;
 
   if ($arg->{create}) {

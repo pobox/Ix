@@ -901,4 +901,30 @@ subtest "db exceptions" => sub {
   );
 };
 
+{
+  # Make sure ix_set_check_arg works
+  my $res = $jmap_tester->request([
+    [
+      setCookies => {
+        create => {
+          actually_a_cake => { type => 'cake' },
+        },
+      }, 'first',
+    ],
+  ]);
+
+  cmp_deeply(
+    $res->as_stripped_struct->[0],
+    [
+      'error',
+      {
+        'descriptoin' => 'A cake is not a cookie',
+        'type' => 'invalidArguments'
+      },
+      'first',
+    ],
+    "Got top level error from ix_set_check_arg",
+  );
+}
+
 done_testing;
