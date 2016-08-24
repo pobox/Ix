@@ -451,15 +451,22 @@ sub _ix_check_user_properties (
       next PROP;
     }
 
-    if (
-      $value->$_isa('JSON::PP::Boolean') || $value->$_isa('JSON::XS::Boolean')
-    ) {
-      $value = $value ? 1 : 0;
-    }
+    # Only allow refs for specific types
+    if (ref $value) {
+      my $ok;
 
-    if (ref $value && ! ($value->$_isa('DateTime') && $date_fields{$prop})) {
-      $property_error{$prop} = "invalid property value";
-      next PROP;
+      $ok = 1 if $date_fields{$prop} && $value->$_isa('DateTime');
+
+      $ok ||= 1 if ($prop_info->{$prop}{data_type} // '') eq 'boolean'
+                && (
+                     $value->$_isa('JSON::PP::Boolean')
+                  || $value->$_isa('JSON::XS::Boolean')
+                );
+
+      unless ($ok) {
+        $property_error{$prop} = "invalid property value";
+        next PROP;
+      }
     }
 
     if (
@@ -508,6 +515,12 @@ sub _ix_check_user_properties (
         $property_error{$prop} = $error;
         next PROP;
       }
+    }
+
+    if (
+      $value->$_isa('JSON::PP::Boolean') || $value->$_isa('JSON::XS::Boolean')
+    ) {
+      $value = $value ? 1 : 0;
     }
 
     $properties{$prop} = $value;

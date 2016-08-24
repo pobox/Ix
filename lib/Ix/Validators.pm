@@ -2,11 +2,23 @@ use 5.22.0;
 use warnings;
 package Ix::Validators;
 
+use JSON ();
+use Safe::Isa;
+
 use experimental qw(postderef signatures);
 
 use Sub::Exporter -setup => [ qw(
-  email enum domain integer nonemptystr simplestr
+  boolean email enum domain integer nonemptystr simplestr
 ) ];
+
+sub boolean {
+  return sub ($x, @) {
+    return "not a valid boolean value"
+      unless $x->$_isa('JSON::PP::Boolean')
+          || $x->$_isa('JSON::XS::Boolean');
+    return;
+  };
+}
 
 sub email {
   return sub ($x, @) {

@@ -1,6 +1,8 @@
 package Bakesale::Schema::Result::CakeRecipe;
 use base qw/DBIx::Class::Core/;
 
+use JSON ();
+
 __PACKAGE__->load_components(qw/+Ix::DBIC::Result/);
 
 __PACKAGE__->table('cake_recipes');
@@ -19,7 +21,7 @@ sub ix_type_key { 'cakeRecipes' }
 
 sub ix_default_properties {
   return {
-    is_delicious => 1,
+    is_delicious => JSON::true,
   };
 }
 

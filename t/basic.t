@@ -9,6 +9,7 @@ use Bakesale::App;
 use Bakesale::Schema;
 use Test::Deep;
 use Test::More;
+use JSON;
 
 my ($app, $jmap_tester) = Bakesale::Test->new_test_app_and_tester;
 \my %dataset = Bakesale::Test->load_trivial_dataset($app->processor->schema_connection);
@@ -442,7 +443,41 @@ subtest "passing in a boolean" => sub {
     ],
     "created with the right truthiness",
   ) or note(explain($res->as_pairs));
+
+  # Can't use something that looks like a boolean
+  $res = $jmap_tester->request([
+    [
+      setCakeRecipes => {
+        create => {
+          boat => {
+            type          => 'cake boat',
+            avg_review    => 0,
+            is_delicious  => 0,
+          }
+        },
+      },
+    ],
+  ]);
+
+  my $err = $res->paragraph(0)
+                ->single('cakeRecipesSet')
+                ->as_set
+                ->create_errors;
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types( $err ),
+    {
+      boat => superhashof({
+        type => 'invalidProperties',
+        propertyErrors => {
+          is_delicious => 'not a valid boolean value',
+        },
+      }),
+    },
+    "Can't use a boolean-like value for a boolean property"
+  );
 };
+
 
 subtest "make a recipe and a cake in one transaction" => sub {
   my $res = $jmap_tester->request([
