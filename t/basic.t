@@ -967,4 +967,96 @@ subtest "supplied created values changed" => sub {
   ) or diag explain $created;
 };
 
+subtest "various string id tests" => sub {
+  # id fields in JMAP are strings, but as far as Ix is concerned they
+  # are integers only. Make sure junk string ids don't throw database
+  # exceptions
+  my $res = $jmap_tester->request([
+    [ setCakes => {
+      create => {
+        "new" => { type => 'wedding', layer_count => 4, recipeId => "cat", },
+      },
+      update => {
+        "bad_id" => { type => 'wedding' },
+      },
+      destroy => [ 'to_destroy' ],
+    }, 'a', ],
+    [
+      getCakes => { ids => [ 'bad' ] }, 'b',
+    ],
+    [
+      getCookies => { sinceState => 'bad' }, 'c',
+    ],
+    [
+      getCookieUpdates => { sinceState => 'bad' }, 'd',
+    ],
+  ]);
+
+  cmp_deeply(
+    $res->as_stripped_struct,
+    [
+      [
+        'cakesSet',
+        {
+          'created' => {},
+          'destroyed' => [],
+          'newState' => ignore(),
+          'notCreated' => {
+            'new' => {
+              'description' => 'invalid property values',
+              'propertyErrors' => {
+                'recipeId' => 'value must be a string in the form of an integer'
+              },
+              'type' => 'invalidProperties'
+            }
+          },
+          'notDestroyed' => {
+            'to_destroy' => {
+              'description' => 'no such record found',
+              'type' => 'notFound'
+            }
+          },
+          'notUpdated' => {
+            'bad_id' => {
+              'description' => 'no such record found',
+              'type' => 'notFound'
+            }
+          },
+          'oldState' => ignore(),
+          'updated' => [],
+        },
+        'a',
+      ],
+      [
+        'cakes',
+        {
+          'list' => [],
+          'notFound' => [
+            'bad'
+          ],
+          'state' => ignore(),
+        },
+        'b',
+      ],
+      [
+        'error',
+        {
+          'description' => 'invalid sinceState',
+          'type' => 'invalidArguments',
+        },
+        'c'
+      ],
+      [
+        'error',
+        {
+          'description' => 'invalid sinceState',
+          'type' => 'invalidArguments',
+        },
+        'd'
+      ]
+    ],
+    "malformed id fields throw proper errors"
+  );
+};
+
 done_testing;

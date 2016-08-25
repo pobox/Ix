@@ -4,7 +4,7 @@ use experimental qw(postderef signatures);
 package Bakesale::Schema::Result::Cake;
 use base qw/DBIx::Class::Core/;
 
-use Ix::Validators qw(integer nonemptystr);
+use Ix::Validators qw(integer nonemptystr idstr);
 use List::Util qw(max);
 
 __PACKAGE__->load_components(qw/+Ix::DBIC::Result/);
@@ -17,7 +17,12 @@ __PACKAGE__->ix_add_properties(
   type        => { data_type => 'text',     },
   layer_count => { data_type => 'integer',  validator => integer(1, 10)  },
   baked_at    => { data_type => 'datetime', is_immutable => 1 },
-  recipeId    => { data_type => 'integer',  xref_to => 'cakeRecipes' },
+  recipeId    => {
+    data_type    => 'string',
+    db_data_type => 'integer',
+    validator    => idstr(),
+    xref_to      => 'cakeRecipes'
+  },
 );
 
 __PACKAGE__->set_primary_key('id');

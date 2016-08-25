@@ -172,6 +172,12 @@ sub ix_compare_state ($self, $since, $state) {
   my $high_ms = $state->highest_modseq_for($self->ix_type_key);
   my $low_ms  = $state->lowest_modseq_for($self->ix_type_key);
 
+  state $bad_idstr = Ix::Validators::idstr();
+
+  if ($bad_idstr->($since)) {
+    return Ix::StateComparison->bogus;
+  }
+
   if ($high_ms  < $since) { return Ix::StateComparison->bogus;   }
   if ($low_ms  >= $since) { return Ix::StateComparison->resync;  }
   if ($high_ms == $since) { return Ix::StateComparison->in_sync; }

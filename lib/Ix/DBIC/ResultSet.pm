@@ -10,6 +10,7 @@ use Ix::Util qw(parsedate parsepgdate);
 use JSON (); # XXX temporary?  for false() -- rjbs, 2016-02-22
 use List::MoreUtils qw(uniq);
 use Safe::Isa;
+use Ix::Validators qw(idstr);
 
 use namespace::clean;
 
@@ -35,6 +36,14 @@ sub ix_get ($self, $ctx, $arg = {}) {
 
   my $ids   = $arg->{ids};
   my $since = $arg->{sinceState};
+
+  state $bad_idstr = Ix::Validators::idstr();
+
+  if (defined $since && $bad_idstr->($since)) {
+    $ctx->error(
+      invalidArguments => { description => "invalid sinceState" }
+    )->throw;
+  }
 
   my $prop_info = $rclass->ix_property_info;
   my %is_prop   = map  {; $_ => 1 }
@@ -66,7 +75,13 @@ sub ix_get ($self, $ctx, $arg = {}) {
     },
   );
 
-  my @ids = $ids ? (grep {; m/\A-?[0-9]+\z/ } @$ids) : ();
+  my @ids;
+
+  if ($ids) {
+    for my $id (@$ids) {
+      push @ids, $id unless $bad_idstr->($id);
+    }
+  }
 
   my %is_virtual = map {; $_ => 1 } $rclass->ix_virtual_property_names;
   my @rows = $self->search(
@@ -601,12 +616,18 @@ sub ix_update ($self, $ctx, $to_update) {
   my %is_user_prop = map {; $_ => 1 } $rclass->ix_mutable_properties($ctx);
   my $prop_info = $rclass->ix_property_info;
 
+  state $bad_idstr = idstr();
+
   UPDATE: for my $id (keys $to_update->%*) {
-    my $row = $self->find({
-      id => $id,
-      datasetId   => $datasetId,
-      dateDeleted => undef,
-    });
+    my $row;
+
+    unless ($bad_idstr->($id)) {
+      $row = $self->find({
+        id => $id,
+        datasetId   => $datasetId,
+        dateDeleted => undef,
+      });
+    }
 
     unless ($row) {
       $result{not_updated}{$id} = $ctx->error(notFound => {
@@ -685,12 +706,19 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
   my %result;
 
   my @destroyed;
+
+  state $bad_idstr = idstr();
+
   DESTROY: for my $id ($to_destroy->@*) {
-    my $row = $self->search({
-      id => $id,
-      datasetId => $datasetId,
-      dateDeleted => undef,
-    })->first;
+    my $row;
+
+    unless ($bad_idstr->($id)) {
+      $row = $self->search({
+        id => $id,
+        datasetId => $datasetId,
+        dateDeleted => undef,
+      })->first;
+    }
 
     unless ($row) {
       $result{not_destroyed}{$id} = $ctx->error(notFound => {
