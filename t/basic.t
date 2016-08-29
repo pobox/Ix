@@ -72,6 +72,30 @@ $jmap_tester->_set_cookie('bakesaleUserId', $dataset{users}{rjbs});
 
 {
   my $res = $jmap_tester->request([
+    [ getCookies => {
+        ids   => [ 1 ],
+        tasty => 1,
+        kakes => \1,
+    } ],
+  ]);
+
+  cmp_deeply(
+    $res->as_stripped_pairs,
+    [
+      [
+        error => {
+          type => 'invalidArguments',
+          description => "unknown arguments to get",
+          unknownArguments => bag(qw(kakes)),
+        },
+      ],
+    ],
+    "you can't just pass random new args to getFoos",
+  );
+}
+
+{
+  my $res = $jmap_tester->request([
     [ getCookieUpdates => {
         sinceState   => 2,
         fetchRecords => \1,

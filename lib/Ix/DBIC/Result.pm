@@ -14,6 +14,8 @@ sub ix_type_key_singular ($self) {
   $self->ix_type_key =~ s/s\z//r;
 }
 
+sub ix_extra_get_args { }
+
 sub ix_virtual_property_names ($self, @) {
   my $prop_info = $self->ix_property_info;
   return grep {; $prop_info->{$_}{is_virtual} } keys %$prop_info;

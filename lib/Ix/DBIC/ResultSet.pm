@@ -34,6 +34,16 @@ sub ix_get ($self, $ctx, $arg = {}) {
   $arg = $rclass->ix_preprocess_get_arg($ctx, $arg)
     if $rclass->can('ix_preprocess_get_arg');
 
+  # unknown argument checking
+  my %allowed_arg = map {; $_ => 1 }
+    ( qw(properties ids), $rclass->ix_extra_get_args );
+  if (my @unknown = grep {; ! $allowed_arg{$_} } keys %$arg) {
+    return $ctx->error("invalidArguments" => {
+      description => "unknown arguments to get",
+      unknownArguments => \@unknown,
+    });
+  }
+
   my $ids   = $arg->{ids};
 
   my $prop_info = $rclass->ix_property_info;
