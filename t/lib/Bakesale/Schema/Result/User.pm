@@ -94,4 +94,11 @@ sub ix_postprocess_create ($self, $ctx, $rows) {
   return;
 }
 
+sub ix_destroy_munge_properties ($self, $ctx, $row) {
+  # Pretend this isn't valid so no user could be created like this
+  return {
+    username => ";DELETED;" . $row->username,
+  };
+}
+
 1;
