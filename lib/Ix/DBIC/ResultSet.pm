@@ -745,9 +745,17 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
       next DESTROY;
     }
 
+    my $munged = {};
+
+    if ($rclass->can('ix_destroy_munge_properties')) {
+      $munged = $rclass->ix_destroy_munge_properties($ctx, $row);
+    }
+
     my $ok = eval {
       $ctx->schema->txn_do(sub {
         $row->update({
+          %$munged,
+
           modSeqChanged => $next_state,
           dateDeleted   => Ix::DateTime->now,
         });
