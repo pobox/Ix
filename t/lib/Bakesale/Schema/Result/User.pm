@@ -14,7 +14,7 @@ __PACKAGE__->ix_add_columns;
 
 __PACKAGE__->ix_add_properties(
   username    => { data_type => 'string' },
-  status      => { data_type => 'string', validator => enum([ qw(active okay) ]) },
+  status      => { data_type => 'string', validator => enum([ qw(active okay whatever) ]) },
   ranking     => { data_type => 'integer', is_virtual => 1 },
 );
 
@@ -32,24 +32,67 @@ sub ix_default_properties ($self, $ctx) {
   },
 }
 
-sub ix_create_error ($self, $ctx, $error) {
+sub ix_create_error ($self, $ctx, $error, $args) {
+  my $input = $args->{input};
+  my $rec = $args->{rec};
+
   if ($error =~ /duplicate key value/) {
-    return $ctx->error(alreadyExists => {
-      description => "that username already exists during create",
-    });
+    if ($rec->{username} eq 'nobody') {
+      # Anyone can create nobody even if they already exist
+      my $nobody = $ctx->schema->resultset('User')->single({
+        username => 'nobody',
+      });
+
+      # Trick Ix into thinking the user input matches everything on the row
+      # (except the id) so they only get the id back. They already know
+      # the username, and this simulates them not having access to the rest
+      # of the user
+      my %is_virtual = map {;
+        $_ => 1
+      } $nobody->ix_virtual_property_names;
+
+      $input->{$_} = $nobody->$_ for grep {;
+        ! $is_virtual{$_}
+      } keys $nobody->ix_property_info->%*;
+
+      delete $input->{id};
+
+      return $nobody;
+    }
+
+    return (
+      undef,
+      $ctx->error(alreadyExists => {
+        description => "that username already exists during create",
+      }),
+    );
   }
 
-  return;
+  return ();
 }
 
-sub ix_update_error ($self, $ctx, $error) {
+sub ix_update_error ($self, $ctx, $error, $args) {
+  my $input = $args->{input};
+  my $row = $args->{row};
+
   if ($error =~ /duplicate key value/) {
-    return $ctx->error(alreadyExists => {
-      description => "that username already exists during update",
-    });
+    # Trying to update to be 'nobody', pretend there were no updates
+    if ($row->username eq 'nobody') {
+      my $nobody = $ctx->schema->resultset('User')->single({
+        username => 'nobody',
+      });
+
+      return $Ix::DBIC::ResultSet::SKIPPED;
+    }
+    return (
+      undef,
+      $ctx->error(alreadyExists => {
+        description => "that username already exists during update",
+      }),
+    );
   }
 
-  return;
+  return ();
 }
 
 sub ix_create_check ($self, $ctx, $arg) {

@@ -12,6 +12,7 @@ use List::MoreUtils qw(uniq);
 use Safe::Isa;
 use Ix::Validators qw(idstr);
 use Unicode::Normalize qw(NFC);
+use Try::Tiny;
 
 use namespace::clean;
 
@@ -374,7 +375,7 @@ sub ix_create ($self, $ctx, $to_create) {
       next TO_CREATE;
     }
 
-    my $row = eval {
+    my ($row, $error) = try {
       $ctx->schema->txn_do(sub {
         my $created = $self->create(\%rec);
 
@@ -382,8 +383,31 @@ sub ix_create ($self, $ctx, $to_create) {
         $rclass->ix_created($ctx, $created);
 
         $ctx->log_created_id($type_key, $id, $created->id);
+
         return $created;
       });
+    } catch {
+      my $exception = $_;
+
+      return (undef, $exception) if $exception->$_DOES('Ix::Error');
+
+      my ($row, $error) = $rclass->ix_create_error(
+        $ctx,
+        $exception,
+        { input => $this, rec => \%rec },
+      );
+
+      unless ($row or $error) {
+        return (
+          undef,
+          $ctx->error(
+            'invalidRecord', { description => "could not create" },
+            "database rejected creation", { db_error => $exception },
+          ),
+        );
+      }
+
+      return ($row, $error);
     };
 
     if ($row) {
@@ -409,21 +433,6 @@ sub ix_create ($self, $ctx, $to_create) {
         %created{ @changed },
       };
     } else {
-      my $exception = $@;
-
-      my $error;
-
-      if (! $exception->$_DOES('Ix::Error')) {
-        $error = $rclass->ix_create_error($ctx, $exception);
-
-        $error ||= $ctx->error(
-          'invalidRecord', { description => "could not create" },
-          "database rejected creation", { db_error => $exception },
-        );
-      } else {
-        $error = $exception;
-      }
-
       $result{not_created}{$id} = $error;
     }
   }
@@ -620,8 +629,8 @@ sub _ix_wash_rows ($self, $rows) {
   return;
 }
 
-my $UPDATED = 1;
-my $SKIPPED = 2;
+our $UPDATED = 1;
+our $SKIPPED = 2;
 
 sub ix_update ($self, $ctx, $to_update) {
   my $datasetId = $ctx->datasetId;
@@ -679,7 +688,7 @@ sub ix_update ($self, $ctx, $to_update) {
       next UPDATE;
     }
 
-    my $ok = eval {
+    my ($ok, $error) = try {
       $ctx->schema->txn_do(sub {
         $row->set_inflated_columns({ %$user_prop });
         return $SKIPPED unless $row->get_dirty_columns;
@@ -691,27 +700,34 @@ sub ix_update ($self, $ctx, $to_update) {
 
         return $UPDATED;
       });
+    } catch {
+      my $exception = $_;
+
+      return (undef, $exception) if $exception->$_DOES('Ix::Error');
+
+      my ($ok, $error) = $rclass->ix_update_error(
+        $ctx,
+        $exception,
+        { input => $to_update->{$id}, row => $row }
+      );
+
+      unless ($ok or $error) {
+        return (
+          undef,
+          $ctx->error(
+            'invalidRecord', { description => "could not update" },
+            "database rejected update", { db_error => $exception },
+          ),
+        );
+      }
+
+      return ($ok, $error);
     };
 
     if ($ok) {
       push @updated, $id;
       $result{actual_updates}++ if $ok == $UPDATED;
     } else {
-      my $exception = $@;
-
-      my $error;
-
-      if (! $exception->$_DOES('Ix::Error')) {
-        $error = $rclass->ix_update_error($ctx, $exception);
-
-        $error ||= $ctx->error(
-          'invalidRecord', { description => "could not update" },
-          "database rejected update", { db_error => $exception },
-        );
-      } else {
-        $error = $exception;
-      }
-
       $result{not_updated}{$id} = $error;
     }
   }

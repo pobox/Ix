@@ -935,6 +935,7 @@ subtest "db exceptions" => sub {
       create => {
         first       => { username => 'first', },
         second      => { username => 'second', },
+        nobody      => { username => 'nobody', status => 'active' },
       },
     } ],
   ]);
@@ -942,9 +943,11 @@ subtest "db exceptions" => sub {
   my $created = $res->paragraph(0)->single('usersSet')->as_set;
   my $first_id = $created->created_id('first');
   my $second_id = $created->created_id('second');
+  my $nobody_id = $created->created_id('nobody');
 
   ok($first_id, 'created user "first"');
   ok($second_id, 'created user "second"');
+  ok($nobody_id, 'created user "nobody"');
 
   # Now try to create duplicate user first
   $res = $jmap_tester->request([
@@ -969,7 +972,28 @@ subtest "db exceptions" => sub {
       },
     },
     "duplicate usernames not possible",
-  );
+  ) or diag explain $res->as_stripped_struct;
+
+  # But we can 'create' duplicate 'nobody' users (it just returns the
+  # the existing one
+  $res = $jmap_tester->request([
+    [ setUsers => {
+      create => {
+        first => { username => 'nobody', status => 'whatever' },
+      },
+    } ],
+  ]);
+
+  jcmp_deeply(
+    $res->paragraph(0)->single('usersSet')->as_set->created,
+    {
+      first => {
+        id       => $nobody_id,
+        ranking  => ignore(),
+      },
+    },
+    "Trying to create a nobody user just gives us back existing one",
+  ) or diag explain $res->as_stripped_struct;
 
   # Try with update
   $res = $jmap_tester->request([
@@ -995,6 +1019,38 @@ subtest "db exceptions" => sub {
     },
     "duplicate usernames not possible",
   );
+
+  # If we attempt to update a user to have the name 'nobody' Bakesale
+  # will pretend that we succeed but there was really no updates. So
+  # it should tell us our object was updated but the state should not
+  # change
+
+  # First, get state
+  $res = $jmap_tester->request([
+    [ getUsers => { ids => [ $first_id ] }, ],
+  ]);
+
+  ok(my $state = $res->single_sentence->arguments->{state}, "got state")
+    or diag $res->as_stripped_struct;
+
+  # Now attempt to change first user to 'nobody'
+  $res = $jmap_tester->request([
+    [ setUsers => {
+      update => {
+        $first_id => { username => 'nobody', },
+      },
+    } ],
+  ]);
+
+  jcmp_deeply(
+    $res->single_sentence->arguments,
+    superhashof({
+      updated => [ $first_id ],
+      oldState => $state,
+      newState => $state,
+    }),
+    "Update can catch db errors and return as if an update happened",
+  ) or diag explain $res->as_stripped_struct;
 };
 
 {
@@ -1152,7 +1208,7 @@ subtest "virtual properties in create" => sub {
   cmp_deeply(
     $created,
     {
-      virtualprops  => { id => ignore(), ranking => 6  },
+      virtualprops  => { id => ignore(), ranking => 7  },
     },
     "Ix returns virtual fields on create",
   ) or diag explain $created;
@@ -1168,7 +1224,7 @@ subtest "virtual properties in create" => sub {
 
   cmp_deeply(
     $got,
-    superhashof({ ranking => 6 }),
+    superhashof({ ranking => 7 }),
     "got ranking back from getUsers"
   );
 };
