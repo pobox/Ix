@@ -6,6 +6,7 @@ use experimental qw(signatures postderef);
 
 use Safe::Isa;
 use Try::Tiny;
+use Time::HiRes qw(gettimeofday tv_interval);
 
 use namespace::autoclean;
 
@@ -89,9 +90,13 @@ sub process_request ($self, $ctx, $calls) {
   my @results;
 
   $ctx->schema->txn_do(sub {
+    my $call_start;
+
     CALL: for my $call (@$calls) {
       # On one hand, I am tempted to disallow ambiguous cids here.  On the other
       # hand, the spec does not. -- rjbs, 2016-02-11
+      $call_start = [ gettimeofday ];
+
       my ($method, $arg, $cid) = @$call;
 
       my $handler = $self->handler_for( $method );
@@ -134,6 +139,13 @@ sub process_request ($self, $ctx, $calls) {
           last RV;
         }
       }
+    } continue {
+      my $call_end = [ gettimeofday ];
+
+      # Just elapsed time for now
+      $ctx->record_call_info($call->[0], {
+        elapsed_seconds => tv_interval($call_start, $call_end),
+      });
     }
 
     $ctx->state->_save_states;

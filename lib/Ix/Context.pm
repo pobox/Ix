@@ -39,6 +39,20 @@ has created_ids => (
   default  => sub {  {}  },
 );
 
+has call_info => (
+  is => 'ro',
+  traits   => [ 'Array' ],
+  handles  => {
+    _add_call_info => 'push',
+  },
+
+  default => sub { [] },
+);
+
+sub record_call_info ($self, $call, $info) {
+  $self->_add_call_info([ $call, $info ]);
+}
+
 sub log_created_id ($self, $type, $creation_id, $id) {
   my $reg = ($self->_created_ids->{$type} //= {});
 

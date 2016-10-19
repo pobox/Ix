@@ -9,6 +9,10 @@ use JSON;
 use Plack::Request;
 use Try::Tiny;
 use Safe::Isa;
+use Scalar::Util qw(weaken);
+use Plack::Util;
+use IO::Handle;
+use Time::HiRes qw(gettimeofday tv_interval);
 
 use namespace::autoclean;
 
@@ -23,9 +27,32 @@ has json_codec => (
   },
 );
 
+has logger_json_codec => (
+  is => 'ro',
+  default => sub {
+    JSON->new->utf8->allow_blessed->convert_blessed->canonical
+  },
+  handles => {
+    encode_json_log => 'encode',
+    decode_json_log => 'decode',
+  },
+);
+
 has processor => (
   is => 'ro',
   required => 1,
+);
+
+has access_log_enabled => (
+  is => 'rw',
+  isa => 'Bool',
+  default => 0,
+);
+
+has access_log_fh => (
+  is => 'rw',
+  isa => 'FileHandle',
+  default => sub { IO::Handle->new->fdopen(fileno(STDERR), "w") },
 );
 
 has log_all_transactions => (
@@ -65,9 +92,10 @@ sub _build_psgi_app ($self) {
     state $transaction_number;
     $transaction_number++;
     $req->env->{'ix.transaction'} = {
-      guid => guid_string(),
-      time => Ix::DateTime->now,
-      seq  => $transaction_number,
+      guid  => guid_string(),
+      time  => Ix::DateTime->now,
+      htime => [ gettimeofday ],
+      seq   => $transaction_number,
     };
 
     my $ctx;
@@ -95,15 +123,23 @@ sub _build_psgi_app ($self) {
       ];
     };
 
+    $req->env->{'ix.transaction'}{end_htime} = [ gettimeofday ];
+    $req->env->{'ix.transaction'}{elapsed_seconds} = tv_interval(
+      $req->env->{'ix.transaction'}{htime},
+      $req->env->{'ix.transaction'}{end_htime}
+    );
+
+    $self->log_access_log($req, $res, $ctx) if $self->access_log_enabled;
+
     my @error_guids = $ctx ? $ctx->logged_exception_guids : ();
 
     if (@error_guids or $self->log_all_transactions) {
-      # We delete this so that when we stick the request into it, we don't
-      # create a reference cycle.
-      my $to_log = delete $req->env->{'ix.transaction'};
+      my $to_log = $req->env->{'ix.transaction'};
 
       $to_log->{exceptions} = \@error_guids;
       $to_log->{request} = $req;
+      weaken($to_log->{request});
+
       $to_log->{response} = $res; # XXX use Plack::Response? -- rjbs, 2016-08-16
 
       $self->log_transaction($to_log);
@@ -145,6 +181,50 @@ sub _core_request ($self, $ctx_ref, $req) {
     ],
     [ $json ],
   ];
+}
+
+sub log_access_log ($self, $req, $res, $ctx = undef) {
+  my $entry = $self->build_access_log_entry($req, $res, $ctx);
+
+  $self->access_log_fh->print( $self->encode_json_log($entry) . "\n" );
+}
+
+sub build_access_log_entry ($self, $req, $res, $ctx = undef) {
+  my %entry = map {
+    $_ => defined $req->$_ ? $req->$_ . "" : undef
+  } qw(
+    remote_host
+    method
+    request_uri
+    content_type
+    content_encoding
+    content_length
+    referer
+    user_agent
+  );
+
+  $entry{remote_ip} = $req->address;
+
+  my $ix_info = $req->env->{'ix.transaction'};
+
+  $entry{$_} = $ix_info->{$_} . "" for qw(
+    guid time elapsed_seconds seq
+  );
+
+  if (ref($res) && ref($res) eq 'ARRAY') {
+    $entry{response_code} = $res->[0];
+
+    $entry{response_length} = Plack::Util::content_length($res->[2]);
+  }
+
+  if ($ctx) {
+    $entry{call_info} = $ctx->call_info;
+
+    $entry{exception_guids} = [ $ctx->logged_exception_guids ]
+      if $ctx->logged_exception_guids;
+  }
+
+  return \%entry;
 }
 
 1;
