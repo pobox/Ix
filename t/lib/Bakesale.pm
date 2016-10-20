@@ -10,7 +10,7 @@ package Bakesale::Test {
     require LWP::Protocol::PSGI;
 
     my $app = Bakesale::App->new({
-      log_all_transactions => 1,
+      transaction_log_enabled => 1,
     });
 
     state $n;

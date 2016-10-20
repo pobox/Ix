@@ -14,9 +14,9 @@ has transaction_log => (
   default  => sub {  []  },
   traits   => [ 'Array' ],
   handles  => {
-    log_transaction       => 'push',
     clear_transaction_log => 'clear',
     logged_transactions   => 'elements',
+    emit_transaction_log  => 'push',
   },
 );
 

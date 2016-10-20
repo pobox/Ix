@@ -9,7 +9,6 @@ use JSON;
 use Plack::Request;
 use Try::Tiny;
 use Safe::Isa;
-use Scalar::Util qw(weaken);
 use Plack::Util;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday tv_interval);
@@ -55,13 +54,11 @@ has access_log_fh => (
   default => sub { IO::Handle->new->fdopen(fileno(STDERR), "w") },
 );
 
-has log_all_transactions => (
-  is  => 'ro',
+has transaction_log_enabled => (
+  is  => 'rw',
   isa => 'Bool',
   default => 0,
 );
-
-sub log_transaction {}
 
 has psgi_app => (
   is  => 'ro',
@@ -129,20 +126,12 @@ sub _build_psgi_app ($self) {
       $req->env->{'ix.transaction'}{end_htime}
     );
 
-    $self->log_access_log($req, $res, $ctx) if $self->access_log_enabled;
+    $self->log_access($req, $res, $ctx) if $self->access_log_enabled;
 
     my @error_guids = $ctx ? $ctx->logged_exception_guids : ();
 
-    if (@error_guids or $self->log_all_transactions) {
-      my $to_log = $req->env->{'ix.transaction'};
-
-      $to_log->{exceptions} = \@error_guids;
-      $to_log->{request} = $req;
-      weaken($to_log->{request});
-
-      $to_log->{response} = $res; # XXX use Plack::Response? -- rjbs, 2016-08-16
-
-      $self->log_transaction($to_log);
+    if ($self->transaction_log_enabled || @error_guids) {
+      $self->log_transaction($req, $res, $ctx);
     }
 
     for (@error_guids) {
@@ -183,10 +172,10 @@ sub _core_request ($self, $ctx_ref, $req) {
   ];
 }
 
-sub log_access_log ($self, $req, $res, $ctx = undef) {
+sub log_access ($self, $req, $res, $ctx = undef) {
   my $entry = $self->build_access_log_entry($req, $res, $ctx);
 
-  $self->access_log_fh->print( $self->encode_json_log($entry) . "\n" );
+  $self->emit_access_log($entry);
 }
 
 sub build_access_log_entry ($self, $req, $res, $ctx = undef) {
@@ -226,5 +215,27 @@ sub build_access_log_entry ($self, $req, $res, $ctx = undef) {
 
   return \%entry;
 }
+
+sub emit_access_log ($self, $entry) {
+  $self->access_log_fh->print( $self->encode_json_log($entry) . "\n" );
+}
+
+sub log_transaction ($self, $req, $res, $ctx = undef) {
+  my $entry = $self->build_transaction_log_entry($req, $res, $ctx);
+
+  $self->emit_transaction_log($entry);
+}
+
+sub build_transaction_log_entry ($self, $req, $res, $ctx = undef) {
+  my $entry = $self->build_access_log_entry($req, $res, $ctx);
+
+  # Add in request/response
+  $entry->{request} = $req;
+  $entry->{response} = $res;
+
+  return $entry;
+}
+
+sub emit_transaction_log ($self, $entry) {}
 
 1;
