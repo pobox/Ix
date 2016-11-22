@@ -919,8 +919,7 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
     },
   );
 
-  my @rows = $search_page->all;
-  my @ids  = map {; $_->{id} } @rows;
+  my @ids = $search_page->get_column('id')->all;
 
   my $hms = "" . $schema->resultset('State')->find({
     accountId => $ctx->accountId,
