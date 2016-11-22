@@ -1101,7 +1101,7 @@ sub _get_list_search_args ($self, $ctx, $arg) {
   my $sort_map = $rclass->ix_get_list_sort_map;
 
   SORT: for my $sort ($arg->{sort}->@*) {
-    my ($field, $order) = split / /, $sort;
+    my ($field, $order, $extra) = split /\s+/, $sort, 3;
     if (! $sort_map->{$field}) {
       $bad_sort{$sort} = 'unknown sort field';
       next SORT;
@@ -1112,8 +1112,13 @@ sub _get_list_search_args ($self, $ctx, $arg) {
       next SORT;
     }
 
+    if ($extra) {
+      $bad_sort{$sort} = 'invalid sort format: expected exactly two arguments';
+      next SORT;
+    }
+
     if ($order ne 'asc' && $order ne 'desc') {
-      $bad_sort{$sort} = "sort order must be 'asc' or 'desc'";
+      $bad_sort{$sort} = "invalid sort format: sort order must be 'asc' or 'desc'";
       next SORT;
     }
 

@@ -443,7 +443,7 @@ $state =~ s/-\d+//;
         filter => {
           fake => 'not a real field',
         },
-        sort => [ 'type', 'fake asc' ],
+        sort => [ 'type', 'fake asc', 'layer_count asc bad', 'layer_count bad' ],
         fetchCakes   => \1,
         fetchRecipes => \1,
       },
@@ -460,8 +460,10 @@ $state =~ s/-\d+//;
         'recipeId' => 'required filter missing',
       },
       'invalidSorts' => {
-        'fake asc' => 'unknown sort field',
-        'type'     => 'invalid sort format: missing sort order',
+        'fake asc'    => 'unknown sort field',
+        'type'        => 'invalid sort format: missing sort order',
+        'layer_count bad' => "invalid sort format: sort order must be 'asc' or 'desc'",
+        'layer_count asc bad' => "invalid sort format: expected exactly two arguments",
       },
     },
     "bad getList forms detected",
