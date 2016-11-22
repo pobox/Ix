@@ -12,6 +12,7 @@ use Safe::Isa;
 use Plack::Util;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday tv_interval);
+use Ix::Util qw(mask_results);
 
 use namespace::autoclean;
 
@@ -204,8 +205,22 @@ sub build_transaction_log_entry ($self, $req, $res, $ctx = undef) {
   my $entry = $self->build_access_log_entry($req, $res, $ctx);
 
   # Add in request/response
-  $entry->{request} = $req;
-  $entry->{response} = $res;
+  my $ix_info = $req->env->{'ix.transaction'};
+
+  # Grab decoded request if we can, raw request otherwise
+  mask_results {
+    if (my $calls = $ix_info->{jmap}{calls}) {
+      $entry->{request} = $self->encode_json_log($calls);
+    } else {
+      $entry->{request} = $req->raw_body;
+    }
+
+    if (my $result = $ix_info->{jmap}{result}) {
+      $entry->{response} = $self->encode_json_log($result);
+    } else {
+      $entry->{response} = $res;
+    }
+  };
 
   return $entry;
 }

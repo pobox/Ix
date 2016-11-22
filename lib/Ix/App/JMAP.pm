@@ -33,6 +33,7 @@ sub _core_request ($self, $ctx, $req) {
 
   $req->env->{'ix.transaction'}{jmap}{calls} = $calls;
   my $result  = $ctx->process_request( $calls );
+  $req->env->{'ix.transaction'}{jmap}{result} = $result;
   my $json    = $self->encode_json($result);
 
   return [

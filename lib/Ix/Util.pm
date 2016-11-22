@@ -5,10 +5,28 @@ use experimental qw(signatures postderef);
 
 use DateTime::Format::Pg;
 use DateTime::Format::RFC3339;
-use Sub::Exporter -setup => [ qw(parsedate parsepgdate) ];
+use Sub::Exporter -setup => [ qw(parsedate parsepgdate mask_results mask_value) ];
+use Ix::Result::Masked;
+use Try::Tiny;
 
 my $pg = DateTime::Format::Pg->new();
 my $rfc3339 = DateTime::Format::RFC3339->new();
+
+sub mask_results ($block) :prototype(&) {
+  try {
+    Ix::Result::Masked->on;
+
+    $block->();
+  } catch {
+    die $_; # rethrow
+  } finally {
+    Ix::Result::Masked->off;
+  }
+}
+
+sub mask_value ($value = undef) {
+  return Ix::Result::Masked->new({ value => $value });
+}
 
 sub parsepgdate ($str) {
   my $dt;

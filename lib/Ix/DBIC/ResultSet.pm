@@ -6,7 +6,7 @@ use parent 'DBIx::Class::ResultSet';
 
 use experimental qw(signatures postderef);
 
-use Ix::Util qw(parsedate parsepgdate);
+use Ix::Util qw(parsedate parsepgdate mask_value);
 use JSON (); # XXX temporary?  for false() -- rjbs, 2016-02-22
 use List::MoreUtils qw(uniq);
 use Safe::Isa;
@@ -478,6 +478,11 @@ sub _ix_check_user_properties (
       next PROP;
     }
 
+    # Hide secrets from transaction logging
+    if ($info->{masked} && exists $rec->{$prop}) {
+      $rec->{$prop} = mask_value($rec->{$prop});
+    }
+
     # User input cannot set internal fields
     if (! $is_default && ! $is_user_prop->{$prop}) {
       $property_error{$prop} = "property cannot be set by client";
@@ -489,6 +494,8 @@ sub _ix_check_user_properties (
       my $ok;
 
       $ok = 1 if $date_fields{$prop} && $value->$_isa('DateTime');
+
+      $ok = 1 if $prop_info->{$prop}{masked} && ref($value) eq 'Ix::Result::Masked';
 
       $ok ||= 1 if ($prop_info->{$prop}{data_type} // '') eq 'boolean'
                 && (
@@ -600,6 +607,8 @@ sub _ix_wash_rows ($self, $rows) {
   for my $key (keys %$info) {
     my $type = $info->{$key}{data_type};
     push $by_type{$type}->@*, $key if $type;
+
+    push $by_type{masked}->@*, $key if $info->{$key}{masked};
   }
 
   my $true  = JSON::true();
@@ -625,6 +634,10 @@ sub _ix_wash_rows ($self, $rows) {
           $row->{$key} = parsepgdate($row->{$key});
         }
       }
+    }
+
+    for my $key ($by_type{masked}->@*) {
+      $row->{$key} = mask_value($row->{$key}) if defined $row->{$key};
     }
   }
 
