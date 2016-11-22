@@ -27,6 +27,11 @@ __PACKAGE__->ix_add_properties(
 
 __PACKAGE__->set_primary_key('id');
 
+__PACKAGE__->belongs_to(
+  recipe => 'Bakesale::Schema::Result::CakeRecipe',
+  { 'foreign.id' => 'self.recipeId' },
+);
+
 sub ix_type_key { 'cakes' }
 
 sub ix_account_type { 'generic' }
@@ -179,9 +184,43 @@ sub ix_postprocess_set ($self, $ctx, $results) {
   return;
 }
 
-__PACKAGE__->belongs_to(
-  recipe => 'Bakesale::Schema::Result::CakeRecipe',
-  { 'foreign.id' => 'self.recipeId' },
-);
+sub ix_get_list_sort_map {
+  return {
+    layer_count => { },
+    baked_at    => { },
+    recipeId    => { },
+    type        => { sort_by => \"
+      CASE me.type
+        WHEN 'chocolate' THEN 1
+        WHEN 'marble'    THEN 2
+        ELSE                  3
+      END
+    "},
+  };
+}
+
+sub ix_get_list_filter_map {
+  return {
+    recipeId    => { required => 1 },
+    type        => { },
+    layer_count => { },
+  };
+}
+
+sub ix_get_list_fetchable_map {
+  return {
+    fetchRecipes => {
+      field      => 'recipeId',
+      result_set => 'CakeRecipe',
+    },
+  };
+}
+
+sub ix_get_list_joins {
+  return ('recipe');
+}
+
+sub ix_get_list_enabled { 1 }
+
 
 1;

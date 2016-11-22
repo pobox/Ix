@@ -52,6 +52,14 @@ has _dbic_handlers => (
         $ctx->schema->resultset($moniker)->ix_set($ctx, $arg);
       };
 
+      if ($rclass->ix_get_list_enabled) {
+        $handler{"get\u${key1}List"} = sub ($self, $ctx, $arg) {
+          $ctx->schema->resultset($moniker)->ix_get_list($ctx, $arg);
+        };
+        $handler{"get\u${key1}ListUpdates"} = sub ($self, $ctx, $arg) {
+          $ctx->schema->resultset($moniker)->ix_get_list_updates($ctx, $arg);
+        };
+      }
     }
 
     return \%handler;

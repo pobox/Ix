@@ -16,6 +16,7 @@ sub ix_type_key_singular ($self) {
   $self->ix_type_key =~ s/s\z//r;
 }
 
+sub ix_get_list_enabled {}
 sub ix_extra_get_args { }
 
 sub ix_virtual_property_names ($self, @) {

@@ -893,4 +893,252 @@ sub ix_set ($self, $ctx, $arg = {}) {
   return @$ret;
 }
 
+sub ix_get_list ($self, $ctx, $arg = {}) {
+  my $rclass = $self->_ix_rclass;
+  $ctx = $ctx->with_account($rclass->ix_account_type, $arg->{accountId});
+
+  my $key = $rclass->ix_type_key;
+  my $key1 = $rclass->ix_type_key_singular;
+  my $fetch_arg = "fetch\u$key";
+
+  my $schema = $ctx->schema;
+
+  my $limit = $arg->{limit} // 500;
+  $limit = 500 if $limit > 500 && $arg->{$fetch_arg};
+
+  my $search = $self->_get_list_search_args($ctx, $arg);
+  $search->{filter}{'me.isActive'} = 1;
+
+  my $search_page = $search->{rs}->search(
+    $search->{filter},
+    {
+      $search->{sort}->%*,
+      rows      => $limit,
+      offset    => $arg->{position} // 0,
+      result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+    },
+  );
+
+  my @rows = $search_page->all;
+  my @ids  = map {; $_->{id} } @rows;
+
+  my $hms = "" . $schema->resultset('State')->find({
+    accountId => $ctx->accountId,
+    type      => $key,
+  })->highestModSeq;
+
+  my @res = $ctx->result("${key1}List" => {
+    filter       => $arg->{filter},
+    sort         => $arg->{sort},
+    state        => $hms,
+    total        => $search->{rs}->search($search->{filter})->count,
+    position     => $arg->{position} // 0,
+    "${key1}Ids" => [ map {; "$_" } @ids ],
+
+    canCalculateUpdates => \1,
+  });
+
+  if ($arg->{$fetch_arg}) {
+    push @res, $self->ix_get($ctx, { ids => \@ids });
+
+    my $res_list = $res[-1]->result_arguments->{list};
+
+    # Any other fetch* args?
+    for my $field (keys $rclass->ix_get_list_fetchable_map->%*) {
+      if ($arg->{$field}) {
+        my $fetchable = $rclass->ix_get_list_fetchable_map->{$field};
+
+        my @ids = map {; "$_->{$fetchable->{field}}" } $res_list->@*;
+
+        push @res, $schema->resultset($fetchable->{result_set})->ix_get(
+          $ctx,
+          { ids => \@ids },
+        );
+      }
+    }
+  }
+
+  return @res;
+}
+
+sub ix_get_list_updates ($self, $ctx, $arg = {}) {
+  my $rclass = $self->_ix_rclass;
+  $ctx = $ctx->with_account($rclass->ix_account_type, $arg->{accountId});
+
+  my $key = $rclass->ix_type_key;
+  my $key1 = $rclass->ix_type_key_singular;
+
+  my $schema = $ctx->schema;
+
+  my $since_state = $arg->{sinceState};
+
+  return $ctx->error(invalidArguments => { description => "no sinceState given" })
+    unless defined $since_state;
+
+  my $state = $schema->resultset('State')->find({
+    accountId => $ctx->accountId,
+    type      => $key,
+  });
+
+  if (
+    $since_state > $state->highestModSeq
+    or
+    $since_state < $state->lowestModSeq
+  ) {
+    return $ctx->error(cannotCalculateChanges => {});
+  }
+
+  my $search = $self->_get_list_search_args($ctx, $arg);
+
+  my $total = $search->{rs}->search($search->{filter})
+                           ->search({ isActive => 1 })->count;
+
+  if ($arg->{sinceState} == $state->highestModSeq) {
+    # Nothing changed!  But we still promise to return the total,
+    # unfortunately, so we get it. -- rjbs, 2016-04-13
+    return $ctx->result("${key1}ListUpdates" => {
+      filter => $arg->{filter},
+      sort   => $arg->{sort},
+      oldState => $since_state,
+      newState => $since_state,
+      total    => $total,
+      removed  => [ ],
+      added    => [ ],
+    });
+  }
+
+  my $filter_map = $rclass->ix_get_list_filter_map;
+  my %required = map {;
+    $_ => $arg->{filter}{$_}
+  } grep {;
+    $filter_map->{$_}->{required}
+  } keys %$filter_map;
+
+  # XXX: stupid, gross, blah -- rjbs, 2016-04-13
+  my @entities = $search->{rs}->search(
+    \%required,
+    $search->{sort}
+  )->all;
+
+  my $i = 0;
+  my @added;
+  my @removed;
+
+  for my $entity (@entities) {
+    my $is_new     = $entity->modSeqCreated > $since_state;
+    my $is_changed = $entity->modSeqChanged > $since_state;
+    my $is_removed = $entity->dateDeleted;
+
+    unless ($is_removed) {
+      FILTER: for my $filter (keys $arg->{filter}->%*) {
+        if ($entity->$filter ne $arg->{filter}{$filter}) {
+          $is_removed = 1;
+          last FILTER;
+        }
+      }
+    }
+
+    my $was_removed = $entity->dateDeleted && ! $is_changed;
+
+    if ($is_removed && ! $is_new && ! $was_removed) {
+      push @removed, "" . $entity->id;
+    } elsif (! $is_removed && $is_new) {
+      push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+    } elsif (! $is_removed && $is_changed) {
+      push @removed, "" . $entity->id;
+      push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+    }
+
+    $i++ unless $is_removed;
+  }
+
+  return $ctx->result("${key1}ListUpdates" => {
+    filter => $arg->{filter},
+    sort   => $arg->{sort},
+    oldState => "" . $since_state,
+    newState => "" . $state->highestModSeq,
+    total    => $total,
+    removed  => \@removed,
+    added    => \@added,
+  });
+}
+
+sub _get_list_search_args ($self, $ctx, $arg) {
+  my $rclass = $self->_ix_rclass;
+
+  my %search;
+
+  $search{rs} = $self->search({ 'me.accountId' => $ctx->accountId });
+
+  my %bad_filter;
+
+  my $filter_map = $rclass->ix_get_list_filter_map;
+
+  FILTER: for my $field (keys $arg->{filter}->%*) {
+    if (!$filter_map->{$field}) {
+      $bad_filter{$field} = 'unknown filter field';
+      next FILTER;
+    }
+    my $sql_name = $field;
+    unless ($sql_name =~ /\./) {
+      $sql_name = "me.$sql_name"; # me.<...>
+    }
+
+    my $val = defined $arg->{filter}{$field}
+                ? $arg->{filter}{$field} . ""
+                : undef;
+    $search{filter}{$sql_name} = $val;
+  }
+
+  for my $field (grep {; $filter_map->{$_}->{required} } keys %$filter_map) {
+    unless (exists $arg->{filter}->{$field}) {
+      $bad_filter{$field} = 'required filter missing';
+    }
+  }
+
+  my @sort;
+  my %bad_sort;
+
+  my $sort_map = $rclass->ix_get_list_sort_map;
+
+  SORT: for my $sort ($arg->{sort}->@*) {
+    my ($field, $order) = split / /, $sort;
+    if (! $sort_map->{$field}) {
+      $bad_sort{$sort} = 'unknown sort field';
+      next SORT;
+    }
+
+    if (! $order) {
+      $bad_sort{$sort} = 'invalid sort format: missing sort order';
+      next SORT;
+    }
+
+    if ($order ne 'asc' && $order ne 'desc') {
+      $bad_sort{$sort} = "sort order must be 'asc' or 'desc'";
+      next SORT;
+    }
+
+    push @sort, { "-$order" => $sort_map->{$field}{sort_by} || $field };
+  }
+
+  # We need to be consistently ordered on multiple requests.  This will
+  # ensure that we are. -- rjbs, 2016-05-13
+  push @sort, "me.id";
+
+  if (%bad_filter || %bad_sort) {
+    $ctx->error(invalidArguments => {
+      description => "Invalid arguments",
+      ( %bad_filter ? ( invalidFilters => \%bad_filter ) : () ),
+      ( %bad_sort   ? ( invalidSorts   => \%bad_sort   ) : () ),
+    })->throw;
+  }
+
+  $search{sort} = {
+    order_by => \@sort,
+    ( $rclass->ix_get_list_joins ? ( join => [ $rclass->ix_get_list_joins ] ) : () ),
+  };
+
+  return \%search;
+}
+
 1;
