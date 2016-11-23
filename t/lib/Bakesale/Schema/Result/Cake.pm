@@ -220,6 +220,30 @@ sub ix_get_list_joins {
   return ('recipe');
 }
 
+sub ix_get_list_check ($self, $ctx, $arg, $search) {
+  if (
+       exists $arg->{filter}
+    && exists $arg->{filter}{recipeId}
+    && ($arg->{filter}{recipeId} // '') eq 'secret'
+  ) {
+    return $ctx->error(invalidArguments => {
+      description => "That recipe is too secret for you",
+    });
+  }
+}
+
+sub ix_get_list_updates_check ($self, $ctx, $arg, $search) {
+  if (
+       exists $arg->{filter}
+    && exists $arg->{filter}{recipeId}
+    && ($arg->{filter}{recipeId} // '') eq 'secret'
+  ) {
+    return $ctx->error(invalidArguments => {
+      description => "That recipe is way too secret for you",
+    });
+  }
+}
+
 sub ix_get_list_enabled { 1 }
 
 

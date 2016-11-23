@@ -714,5 +714,44 @@ $state =~ s/-\d+//;
   );
 }
 
+{
+  # Hooks
+  $res = $jmap_tester->request([
+    [
+      getCakeList => {
+        filter => {
+          recipeId => 'secret',
+        },
+      },
+    ],
+    [
+      getCakeListUpdates => {
+        filter => {
+          recipeId => 'secret',
+        },
+        sinceState => $state-1,
+      },
+    ],
+  ]);
+
+  jcmp_deeply(
+    $res->sentence(0)->arguments,
+    {
+      type        => 'invalidArguments',
+      description => "That recipe is too secret for you",
+    },
+    "getCakeList ix_get_list_check hook works"
+  );
+
+  jcmp_deeply(
+    $res->sentence(1)->arguments,
+    {
+      type        => 'invalidArguments',
+      description => "That recipe is way too secret for you",
+    },
+    "getCakeListUpdates ix_get_list_updates_check hook works"
+  );
+};
+
 done_testing;
 

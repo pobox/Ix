@@ -909,6 +909,10 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
   my $search = $self->_get_list_search_args($ctx, $arg);
   $search->{filter}{'me.isActive'} = 1;
 
+  if (my $error = $rclass->ix_get_list_check($ctx, $arg, $search)) {
+    return $error;
+  }
+
   my $search_page = $search->{rs}->search(
     $search->{filter},
     {
@@ -988,6 +992,10 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   }
 
   my $search = $self->_get_list_search_args($ctx, $arg);
+
+  if (my $error = $rclass->ix_get_list_updates_check($ctx, $arg, $search)) {
+    return $error;
+  }
 
   my $total = $search->{rs}->search($search->{filter})
                            ->search({ isActive => 1 })->count;

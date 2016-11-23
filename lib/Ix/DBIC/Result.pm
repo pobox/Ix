@@ -158,10 +158,12 @@ sub ix_finalize ($class) {
 
 sub ix_set_check { return; } # ($self, $ctx, \%arg)
 
-sub ix_get_check     { } # ($self, $ctx, \%arg)
-sub ix_create_check  { } # ($self, $ctx, \%rec)
-sub ix_update_check  { } # ($self, $ctx, $row, \%rec)
-sub ix_destroy_check { } # ($self, $ctx, $row)
+sub ix_get_check              { } # ($self, $ctx, \%arg)
+sub ix_create_check           { } # ($self, $ctx, \%rec)
+sub ix_update_check           { } # ($self, $ctx, $row, \%rec)
+sub ix_destroy_check          { } # ($self, $ctx, $row)
+sub ix_get_list_check         { } # ($self, $ctx, \%arg, \%search)
+sub ix_get_list_updates_check { } # ($self, $ctx, \%arg, \%search)
 
 sub ix_create_error  { return; } # ($self, $ctx, \%error)
 sub ix_update_error  { return; } # ($self, $ctx, \%error)
