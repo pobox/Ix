@@ -6,7 +6,7 @@ use parent 'DBIx::Class::ResultSet';
 
 use experimental qw(signatures postderef);
 
-use Ix::Util qw(parsedate parsepgdate);
+use Ix::Util qw(parsedate parsepgdate differ);
 use JSON (); # XXX temporary?  for false() -- rjbs, 2016-02-22
 use List::MoreUtils qw(uniq);
 use Safe::Isa;
@@ -1038,7 +1038,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
 
     unless ($is_removed) {
       FILTER: for my $filter (keys $arg->{filter}->%*) {
-        if ($entity->$filter ne $arg->{filter}{$filter}) {
+        if (differ($entity->$filter, $arg->{filter}{$filter})) {
           $is_removed = 1;
           last FILTER;
         }
