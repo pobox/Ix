@@ -925,10 +925,7 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
 
   my @ids = $search_page->get_column('id')->all;
 
-  my $hms = "" . $schema->resultset('State')->find({
-    accountId => $ctx->accountId,
-    type      => $key,
-  })->highestModSeq;
+  my $hms = "" . $ctx->state->highest_modseq_for($key);
 
   my @res = $ctx->result("${key1}List" => {
     filter       => $arg->{filter},
@@ -978,15 +975,13 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   return $ctx->error(invalidArguments => { description => "no sinceState given" })
     unless defined $since_state;
 
-  my $state = $schema->resultset('State')->find({
-    accountId => $ctx->accountId,
-    type      => $key,
-  });
+  my $hms = $ctx->state->highest_modseq_for($key);
+  my $lms = $ctx->state->lowest_modseq_for($key);
 
   if (
-    $since_state > $state->highestModSeq
+    $since_state > $hms
     or
-    $since_state < $state->lowestModSeq
+    $since_state < $lms
   ) {
     return $ctx->error(cannotCalculateChanges => {});
   }
@@ -1000,7 +995,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   my $total = $search->{rs}->search($search->{filter})
                            ->search({ isActive => 1 })->count;
 
-  if ($arg->{sinceState} == $state->highestModSeq) {
+  if ($arg->{sinceState} == $hms) {
     # Nothing changed!  But we still promise to return the total,
     # unfortunately, so we get it. -- rjbs, 2016-04-13
     return $ctx->result("${key1}ListUpdates" => {
@@ -1063,7 +1058,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     filter => $arg->{filter},
     sort   => $arg->{sort},
     oldState => "" . $since_state,
-    newState => "" . $state->highestModSeq,
+    newState => "" . $hms,
     total    => $total,
     removed  => \@removed,
     added    => \@added,

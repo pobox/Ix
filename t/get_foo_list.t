@@ -45,6 +45,54 @@ my $secret2_recipe_id = $res->single_sentence->as_set->created_id('secret2');
 ok($secret1_recipe_id, 'created a chocolate recipe');
 ok($secret2_recipe_id, 'created a marble recipe');
 
+{
+  # Try to getCakeList / getCakeListUpdates - should work but return nothing
+  my $res = $jmap_tester->request([
+    [
+      getCakeList => {
+        filter => {
+          recipeId => $secret1_recipe_id,
+        },
+        sort => [ 'type asc' ],
+      },
+    ],
+  ]);
+
+  jcmp_deeply(
+    $res->single_sentence->arguments,
+    superhashof({
+      cakeIds => [],
+      state   => 0,
+      total   => 0,
+    }),
+    "ix_get_list works with no state rows"
+  );
+
+  $res = $jmap_tester->request([
+    [
+      getCakeListUpdates => {
+        filter => {
+          recipeId => $secret1_recipe_id,
+        },
+        sort => [ 'type asc' ],
+        sinceState => 0,
+      },
+    ],
+  ]);
+
+  jcmp_deeply(
+    $res->single_sentence->arguments,
+    superhashof({
+      added    => [],
+      removed  => [],
+      total    => 0,
+      newState => 0,
+      oldState => 0,
+    }),
+    "ix_get_list_update works with no state rows"
+  );
+}
+
 # Now create a few cakes under each one
 $res = $jmap_tester->request([
   [
@@ -560,7 +608,7 @@ $state =~ s/-\d+//;
       'total' => 2
     },
     "getCakeListUpdates looks right for added cakes"
-  );
+  ) or diag explain $res->as_stripped_struct;
 
   # Now try from state-1, should show removal
   $res = $jmap_tester->request([
