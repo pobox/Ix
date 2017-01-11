@@ -91,7 +91,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
     {
       accountId => $accountId,
       ($ids ? (id => \@ids) : ()),
-      dateDeleted => undef,
+      dateDestroyed => undef,
       %$x_get_cond,
     },
     {
@@ -180,7 +180,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
     {
       select => [
         'id',
-        qw(me.dateDeleted me.modSeqChanged),
+        qw(me.dateDestroyed me.modSeqChanged),
         $rclass->ix_update_extra_select->@*,
       ],
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
@@ -226,7 +226,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
   my @changed;
   my @removed;
   for my $item (@rows) {
-    if ($item->{dateDeleted}) {
+    if ($item->{dateDestroyed}) {
       push @removed, "$item->{id}";
     } else {
       push @changed, "$item->{id}";
@@ -278,7 +278,7 @@ sub ix_purge ($self, $ctx, $arg = {}) {
 
   my $rs = $self->search({
     accountId   => $accountId,
-    dateDeleted => { '<', $since->as_string },
+    dateDestroyed => { '<', $since->as_string },
   });
 
   my $maxDeletedModSeq = $self->get_column('modSeqChanged')->max;
@@ -660,7 +660,7 @@ sub ix_update ($self, $ctx, $to_update) {
       $row = $self->find({
         id => $id,
         accountId   => $accountId,
-        dateDeleted => undef,
+        dateDestroyed => undef,
       });
     }
 
@@ -772,7 +772,7 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
       $row = $self->search({
         id => $id,
         accountId => $accountId,
-        dateDeleted => undef,
+        dateDestroyed => undef,
       })->first;
     }
 
@@ -792,7 +792,7 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
       $ctx->schema->txn_do(sub {
         $row->update({
           modSeqChanged => $next_state,
-          dateDeleted   => Ix::DateTime->now,
+          dateDestroyed   => Ix::DateTime->now,
 
           # Null this out making any unique constraints unblocked for
           # a new create (since null is never == null in postgres)
@@ -1036,7 +1036,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   for my $entity (@entities) {
     my $is_new     = $entity->modSeqCreated > $since_state;
     my $is_changed = $entity->modSeqChanged > $since_state;
-    my $is_removed = $entity->dateDeleted;
+    my $is_removed = $entity->dateDestroyed;
 
     unless ($is_removed) {
       FILTER: for my $filter (keys $arg->{filter}->%*) {
@@ -1047,7 +1047,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       }
     }
 
-    my $was_removed = $entity->dateDeleted && ! $is_changed;
+    my $was_removed = $entity->dateDestroyed && ! $is_changed;
 
     if ($is_removed && ! $is_new && ! $was_removed) {
       push @removed, "" . $entity->id;

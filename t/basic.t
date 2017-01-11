@@ -1677,7 +1677,7 @@ subtest "good call gets headers" => sub {
   ok($http_res->header('Ix-Transaction-ID'), 'we have a request guid!');
 };
 
-subtest "dateDeleted has timezone" => sub {
+subtest "dateDestroyed has timezone" => sub {
   my $res1 = $jmap_tester->request([
     [ setCookies => { create => { doomed => { type => 'pistachio' } } } ],
   ]);
@@ -1699,13 +1699,13 @@ subtest "dateDeleted has timezone" => sub {
       my ($storage, $dbh) = @_;
 
       my $raw = $dbh->selectall_arrayref(
-        'SELECT "dateDeleted" FROM cookies WHERE id = ?', {}, $id,
+        'SELECT "dateDestroyed" FROM cookies WHERE id = ?', {}, $id,
       );
 
       like(
         $raw->[0][0],
         qr/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\+00/a,
-        'dateDeleted contains a timezone (UTC by default)'
+        'dateDestroyed contains a timezone (UTC by default)'
       );
     }
   );

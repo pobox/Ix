@@ -171,13 +171,13 @@ my @created_ids;
   cmp_deeply(
     \@rows,
     [
-      superhashof({ dateDeleted => undef, id => $account{cookies}{1}, type => 'half-eaten tim-tam', delicious => 'no', }),
-      superhashof({ dateDeleted => undef, id => $account{cookies}{2}, type => 'oreo', delicious => 'yes', }),
-      superhashof({ dateDeleted => re(qr/\A[0-9]{4}-/), id => $account{cookies}{4}, type => 'samoa', delicious => 'yes', }),
-      superhashof({ dateDeleted => undef, id => $account{cookies}{5}, type => 'tim tam', delicious => 'yes', }),
-      superhashof({ dateDeleted => undef, id => $account{cookies}{6}, type => 'immortal', delicious => 'yes', }),
-      superhashof({ dateDeleted => undef, id => any(@created_ids), type => any(qw(shortbread anzac)), delicious => any(qw(yes no)), }),
-      superhashof({ dateDeleted => undef, id => any(@created_ids), type => any(qw(shortbread anzac)), delicious => any(qw(yes no)), }),
+      superhashof({ dateDestroyed => undef, id => $account{cookies}{1}, type => 'half-eaten tim-tam', delicious => 'no', }),
+      superhashof({ dateDestroyed => undef, id => $account{cookies}{2}, type => 'oreo', delicious => 'yes', }),
+      superhashof({ dateDestroyed => re(qr/\A[0-9]{4}-/), id => $account{cookies}{4}, type => 'samoa', delicious => 'yes', }),
+      superhashof({ dateDestroyed => undef, id => $account{cookies}{5}, type => 'tim tam', delicious => 'yes', }),
+      superhashof({ dateDestroyed => undef, id => $account{cookies}{6}, type => 'immortal', delicious => 'yes', }),
+      superhashof({ dateDestroyed => undef, id => any(@created_ids), type => any(qw(shortbread anzac)), delicious => any(qw(yes no)), }),
+      superhashof({ dateDestroyed => undef, id => any(@created_ids), type => any(qw(shortbread anzac)), delicious => any(qw(yes no)), }),
     ],
     "the db matches our expectations",
   ) or diag explain(\@rows);
