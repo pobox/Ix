@@ -560,7 +560,10 @@ sub _ix_check_user_properties (
       $value = $value ? 1 : 0;
     }
 
-    if (defined $value && $info->{data_type} eq 'string') {
+    if (defined $value && (
+         $info->{data_type} eq 'string'
+      || $info->{data_type} eq 'idstr',
+    )) {
       $value = NFC($value);
     }
 
@@ -614,7 +617,7 @@ sub _ix_wash_rows ($self, $rows) {
       $row->{$key} = 0 + $row->{$key} if defined $row->{$key};
     }
 
-    for my $key ($by_type{string}->@*) {
+    for my $key ($by_type{string}->@*, $by_type{idstr}->@*) {
       $row->{$key} = "$row->{$key}" if defined $row->{$key};
     }
 

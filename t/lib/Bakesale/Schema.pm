@@ -3,6 +3,8 @@ use warnings;
 package Bakesale::Schema;
 use base qw/DBIx::Class::Schema/;
 
+sub local_schema_version { "1.0" }
+
 __PACKAGE__->load_components(qw/+Ix::DBIC::Schema/);
 
 __PACKAGE__->load_namespaces(

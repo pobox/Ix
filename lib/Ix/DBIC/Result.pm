@@ -43,20 +43,21 @@ sub ix_mutable_properties ($self, $ctx) {
 sub ix_default_properties { return {} }
 
 sub ix_add_columns ($class) {
+  my $table = $class->table;
+
   $class->ix_add_properties(
     id            => {
-      data_type     => 'string',
-      db_data_type  => 'integer',
-      default_value => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      data_type     => 'idstr',
+      default_value => \"ix_skip32_secret(nextval('${table}_seed_seq')::bigint, true)",
       is_immutable  => 1,
     },
   );
 
   $class->add_columns(
-    accountId     => { data_type => 'integer' },
+    accountId     => { data_type => 'bigint' },
     created       => { data_type => 'timestamptz', default_value => \'NOW()' },
-    modSeqCreated => { data_type => 'integer' },
-    modSeqChanged => { data_type => 'integer' },
+    modSeqCreated => { data_type => 'bigint' },
+    modSeqChanged => { data_type => 'bigint' },
     dateDeleted   => { data_type => 'timestamptz', is_nullable => 1 },
     isActive      => { data_type => 'boolean', is_nullable => 1, default_value => 1 },
   );
@@ -91,6 +92,7 @@ my %IX_TYPE = (
 
   boolean      => { data_type => 'boolean' },
   integer      => { data_type => 'integer', is_numeric => 1 },
+  idstr        => { data_type => 'bigint', is_numeric => 1 },
 );
 
 sub ix_add_properties ($class, @pairs) {
@@ -138,6 +140,7 @@ sub ix_add_properties ($class, @pairs) {
 
 my %DEFAULT_VALIDATOR = (
   integer => Ix::Validators::integer(),
+  idstr   => Ix::Validators::idstr(),
   string  => Ix::Validators::simplestr(),
   boolean => Ix::Validators::boolean(),
 );

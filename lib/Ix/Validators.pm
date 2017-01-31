@@ -113,8 +113,9 @@ sub integer ($min = '-Inf', $max = 'Inf') {
   };
 }
 
-sub idstr ($min = -2147483648, $max = 2147483647) {
+sub idstr ($min = 0, $max = 4294967295) {
   return sub ($x, @) {
+    return "invalid id string" unless defined $x; # weak
     return "invalid id string" unless $x =~ /\A(?:0|-?[1-9][0-9]*)\z/;
     return "invalid id string" if $x < $min;
     return "invalid id string" if $x > $max;

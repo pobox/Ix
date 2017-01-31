@@ -44,7 +44,7 @@ package Bakesale::Test {
     my $user_rs = $schema->resultset('User');
 
     my $user1 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => \q{ix_new_account_id()},
       username  => 'testadmin',
       status    => 'active',
       modSeqCreated => 1,
@@ -62,7 +62,7 @@ package Bakesale::Test {
     my $user_rs = $schema->resultset('User');
 
     my $user1 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => \q{ix_new_account_id()},
       username  => 'rjbs',
       status    => 'active',
       modseq(1)
@@ -71,7 +71,7 @@ package Bakesale::Test {
     $user1 = $user_rs->single({ id => $user1->id });
 
     my $user2 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => \q{ix_new_account_id()},
       username  => 'neilj',
       status    => 'active',
       modseq(1)
@@ -80,7 +80,7 @@ package Bakesale::Test {
     $user2 = $user_rs->single({ id => $user2->id });
 
     my $user3 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => \q{ix_new_account_id()},
       username  => 'alh',
       status    => 'active',
       modseq(1)

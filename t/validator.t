@@ -9,11 +9,11 @@ use Ix::Validators 'idstr';
 use Test::More;
 
 my $iderr = idstr();
-for my $input (qw( -1 0 1 )) {
+for my $input (qw( 0 1 4294967295)) {
   ok( ! $iderr->($input), "$input is a valid idstr");
 }
 
-for my $input (qw( -0 +0 +1 banana )) {
+for my $input (qw( -0 +0 +1 banana 4294967296 )) {
   ok( $iderr->($input), "$input is not a valid idstr");
 }
 

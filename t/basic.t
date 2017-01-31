@@ -137,7 +137,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
       ],
     ],
     "a getFoos call backed by the database",
-  );
+  ) or diag explain $res->as_stripped_struct;
 }
 
 {
@@ -360,6 +360,17 @@ subtest "invalid sinceState" => sub {
   };
 
   subtest "too low" => sub {
+    $app->processor->schema_connection->storage->dbh_do(
+      sub {
+        my ($storage, $dbh) = @_;
+
+        # Need to ensure 0 is below the lowest state
+        my $raw = $dbh->do(
+          "UPDATE states SET \"lowestModSeq\" = 1 WHERE type = 'cookies'"
+        );
+      }
+    );
+
     my $res = $jmap_tester->request([
       [ getCookieUpdates => { sinceState => 0 } ],
     ]);
@@ -1574,9 +1585,20 @@ subtest "ix_created test" => sub {
   );
 
   # If our sinceState is too low we should get a resync
+  $app->processor->schema_connection->storage->dbh_do(
+    sub {
+      my ($storage, $dbh) = @_;
+
+      # Need to ensure 0 is below the lowest state
+      my $raw = $dbh->do(
+        "UPDATE states SET \"lowestModSeq\" = 1 WHERE type = 'cookies'"
+      );
+    }
+  );
+
   $res = $jmap_tester->request([
     [ getCookieUpdates => {
-        sinceState   => -1,
+        sinceState   => 0,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type) ],
       }
