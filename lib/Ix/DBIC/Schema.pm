@@ -7,10 +7,15 @@ use parent 'DBIx::Class';
 use experimental qw(signatures postderef);
 
 sub ix_finalize ($self) {
-	my $source_reg = $self->source_registrations;
+  my $source_reg = $self->source_registrations;
   for my $moniker (keys %$source_reg) {
     my $rclass = $source_reg->{$moniker}->result_class;
     $rclass->ix_finalize if $rclass->can('ix_finalize');
+
+    if ($rclass->can('array_class')) {
+      my $ac = $rclass->array_class;
+      $self->register_class(%$ac);
+    }
   }
 }
 

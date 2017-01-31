@@ -16,9 +16,14 @@ __PACKAGE__->ix_add_properties(
   baked_at   => { data_type => 'timestamptz', is_optional => 1 },
   expires_at => { data_type => 'timestamptz', is_optional => 0 },
   delicious  => { data_type => 'string', is_optional => 0 },
+  toppers    => { data_type => 'string[]', is_optional => 1 },
 );
 
 __PACKAGE__->set_primary_key('id');
+
+__PACKAGE__->add_unique_constraint(
+  [ 'accountId', 'id' ],
+);
 
 sub ix_type_key { 'cookies' }
 

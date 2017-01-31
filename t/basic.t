@@ -129,9 +129,9 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
           notFound => undef,
           state => 8,
           list  => [
-            { id => $account{cookies}{4}, type => 'samoa',   }, # baked_at => 1455319240 },
-            { id => $account{cookies}{5}, type => 'tim tam', }, # baked_at => 1455310000 },
-            { id => $account{cookies}{6}, type => 'immortal', }, # baked_at => 1455310000 },
+            { id => $account{cookies}{4}, type => 'samoa', toppers => [],  }, # baked_at => 1455319240, },
+            { id => $account{cookies}{5}, type => 'tim tam', toppers => [], }, # baked_at => 1455310000, },
+            { id => $account{cookies}{6}, type => 'immortal', toppers => [], }, # baked_at => 1455310000, },
           ],
         },
       ],
@@ -167,7 +167,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
           notFound => [ $does_not_exist ],
           state => 8,
           list  => [
-            { id => $account{cookies}{4}, type => "samoa" }, # baked_at => 1455319240 },
+            { id => $account{cookies}{4}, type => "samoa", toppers => [], }, # baked_at => 1455319240 },
           ],
         },
       ],
@@ -240,8 +240,8 @@ my @created_ids;
           newState => 9,
 
           created => {
-            yellow => { id => ignore(), expires_at => ignore(), delicious => ignore() }, # no baked_at, because not default
-            gold   => { id => ignore(), expires_at => ignore, baked_at => ignore(), delicious => ignore() },
+            yellow => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], }, # no baked_at, because not default
+            gold   => { id => ignore(), expires_at => ignore, baked_at => ignore(), delicious => ignore(), toppers => [], },
           },
           notCreated => {
             blue   => superhashof({
@@ -659,7 +659,7 @@ subtest "subroutine defaults for lazy computation" => sub {
     [
       [
         cookiesSet => superhashof({
-          created => { raw => { id => re(qr/\S/), expires_at => ignore(), delicious => ignore() } },
+          created => { raw => { id => re(qr/\S/), expires_at => ignore(), delicious => ignore(), toppers => [] } },
         }),
       ],
     ],
@@ -847,12 +847,12 @@ subtest "timestamptz field validations" => sub {
           oldState => ignore(),
           newState => code(sub { $state = $_[0]; 1}),
           created => {
-            yellow => { id => ignore(), expires_at => ignore(), baked_at => $tsrez, delicious => ignore(), },
-            gold   => { id => ignore(), expires_at => ignore(), delicious => ignore(), },
-            blue   => { id => ignore(), expires_at => ignore(), delicious => ignore(), },
-            white  => { id => ignore(), expires_at => ignore(), delicious => ignore(), },
-            pink   => { id => ignore(), baked_at => ignore(), delicious => ignore(), },
-            onyx   => { id => ignore(), baked_at => ignore(), delicious => ignore(), },
+            yellow => { id => ignore(), expires_at => ignore(), baked_at => $tsrez, delicious => ignore(), toppers => [], },
+            gold   => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
+            blue   => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
+            white  => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
+            pink   => { id => ignore(), baked_at => ignore(), delicious => ignore(), toppers => [], },
+            onyx   => { id => ignore(), baked_at => ignore(), delicious => ignore(), toppers => [], },
           },
           notCreated => {
             red => superhashof({
@@ -896,12 +896,12 @@ subtest "timestamptz field validations" => sub {
           notFound => undef,
           state => $state,
           list  => bag(
-            { id => ignore(), type => 'yellow', baked_at => $tsrez, expires_at => $tsrez, },
-            { id => ignore(), type => 'gold', baked_at => undef, expires_at => $tsrez, },
-            { id => ignore(), type => 'blue', baked_at => '2016-01-01T12:34:56Z', expires_at => $tsrez, },
-            { id => ignore(), type => 'white', baked_at => '2016-01-01T12:34:57Z', expires_at => $tsrez, },
-            { id => ignore(), type => 'pink', baked_at => $tsrez, expires_at => '2016-01-01T12:34:56Z' },
-            { id => ignore(), type => 'onyx', baked_at => $tsrez, expires_at => '2016-01-01T12:34:57Z' },
+            { id => ignore(), type => 'yellow', baked_at => $tsrez, expires_at => $tsrez, toppers => [], },
+            { id => ignore(), type => 'gold', baked_at => undef, expires_at => $tsrez, toppers => [], },
+            { id => ignore(), type => 'blue', baked_at => '2016-01-01T12:34:56Z', expires_at => $tsrez, toppers => [], },
+            { id => ignore(), type => 'white', baked_at => '2016-01-01T12:34:57Z', expires_at => $tsrez, toppers => [], },
+            { id => ignore(), type => 'pink', baked_at => $tsrez, expires_at => '2016-01-01T12:34:56Z', toppers => [], },
+            { id => ignore(), type => 'onyx', baked_at => $tsrez, expires_at => '2016-01-01T12:34:57Z', toppers => [], },
           ),
         },
       ],
@@ -981,12 +981,12 @@ subtest "timestamptz field validations" => sub {
           notFound => undef,
           state => $state,
           list  => set(
-            { id => ignore(), type => 'tim tam', baked_at => $tsrez, expires_at => ignore() },
-            { id => ignore(), type => 'gold', baked_at => '2016-01-01T12:34:56Z', expires_at => ignore() },
-            { id => ignore(), type => 'blue', baked_at => undef, expires_at => ignore(), },
-            { id => ignore(), type => 'white', baked_at => '2016-01-01T12:34:57Z', expires_at => ignore() },
-            { id => ignore(), type => 'pink', baked_at => ignore(), expires_at => '2016-01-01T12:34:56Z', },
-            { id => ignore(), type => 'black', baked_at => ignore(), expires_at => '2016-01-01T12:34:57Z' },
+            { id => ignore(), type => 'tim tam', baked_at => $tsrez, expires_at => ignore(), toppers => [], },
+            { id => ignore(), type => 'gold', baked_at => '2016-01-01T12:34:56Z', expires_at => ignore(), toppers => [], },
+            { id => ignore(), type => 'blue', baked_at => undef, expires_at => ignore(), toppers => [], },
+            { id => ignore(), type => 'white', baked_at => '2016-01-01T12:34:57Z', expires_at => ignore(), toppers => [], },
+            { id => ignore(), type => 'pink', baked_at => ignore(), expires_at => '2016-01-01T12:34:56Z', toppers => [], },
+            { id => ignore(), type => 'black', baked_at => ignore(), expires_at => '2016-01-01T12:34:57Z', toppers => [], },
           ),
         },
       ],
@@ -1769,6 +1769,108 @@ subtest "dateDeleted has timezone" => sub {
       );
     }
   );
+};
+
+subtest "array types" => sub {
+  # Array types!
+  my $res = $jmap_tester->request([
+    [
+      setCookies => {
+        create => { raw => {
+          type => 'dough',
+          baked_at => undef,
+          toppers => ['sprinkles', 'icing' ],
+        } },
+      },
+    ],
+  ]);
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types( $res->as_pairs ),
+    [
+      [
+        cookiesSet => superhashof({
+          created => { raw => {
+            id => re(qr/\S/),
+            expires_at => ignore(),
+            delicious => ignore(),
+            toppers => set('sprinkles', 'icing'),
+          } },
+        }),
+      ],
+    ],
+    "we can create a record with a null date field",
+  ) or diag(explain($jmap_tester->strip_json_types( $res->as_pairs )));
+
+  my $id = $res->single_sentence->as_set->created_id('raw');
+  ok($id, 'got created id');
+
+  my $state = $res->single_sentence->arguments->{newState} + 0;
+  ok($state, 'got state');
+
+  # Not a real update, should be detected
+  for my $test (
+    [ qw(sprinkles icing) ],
+    [ qw(icing sprinkles) ],
+  ) {
+    $res = $jmap_tester->request([
+      [
+        setCookies => {
+          update => {
+            $id => {
+              toppers => $test,
+            },
+          },
+        },
+      ],
+    ]);
+
+    jcmp_deeply(
+      $res->single_sentence->arguments->{updated},
+      { $id => undef },
+      "toppers didn't change but still shows up in updated"
+    ) or diag explain $res->as_stripped_struct;
+
+    jcmp_deeply(
+      $res->single_sentence->arguments->{newState},
+      $state,
+     "state did not change so no real updates!"
+    );
+  }
+
+  # Real updates
+  for my $test (
+    [ qw(icing) ],           # Remove one
+    [ qw() ],                # Remove all
+    [ qw(icing) ],           # Add one
+    [ qw(bark)  ],           # Remove one add one
+    [ qw(bark mulch) ],      # Add one
+    [ qw(sprinkles icing) ], # Remove all add 2
+  ) {
+    $res = $jmap_tester->request([
+      [
+        setCookies => {
+          update => {
+            $id => {
+              toppers => $test,
+            },
+          },
+        },
+      ],
+    ]);
+
+    jcmp_deeply(
+      $res->single_sentence->arguments->{updated},
+      { $id => undef },
+      "toppers may have caused an update (@$test)"
+    ) or diag explain $res->as_stripped_struct;
+
+    jcmp_deeply(
+      $res->single_sentence->arguments->{newState},
+      ++$state,
+     "state changed!"
+    );
+  }
 };
 
 done_testing;

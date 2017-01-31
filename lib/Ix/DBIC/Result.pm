@@ -24,6 +24,29 @@ sub ix_virtual_property_names ($self, @) {
   return grep {; $prop_info->{$_}{is_virtual} } keys %$prop_info;
 }
 
+sub ix_array_type_property_names ($self, @) {
+  my $prop_info = $self->ix_property_info;
+  return grep {; $prop_info->{$_}{is_array_type} } keys %$prop_info;
+}
+
+sub ix_array_type_properties ($self, @) {
+  my $prop_info = $self->ix_property_info;
+
+  my %list = map {;
+    $_ => $prop_info->{$_}
+  } $self->ix_array_type_property_names;
+
+  return %list;
+}
+
+sub ix_real_property_names ($self, @) {
+  my %skip = map {;
+    $_ => 1
+  } ($self->ix_virtual_property_names, $self->ix_array_type_property_names);
+
+  return grep {; ! $skip{$_} } $self->ix_property_names;
+}
+
 sub ix_property_names ($self, @) {
   return keys $self->ix_property_info->%*;
 }
@@ -102,20 +125,28 @@ sub ix_add_properties ($class, @pairs) {
     Carp::confess("Attempt to add property $name with no data_type")
       unless defined $def->{data_type};
 
-    my $ix_type = $IX_TYPE{ $def->{data_type} };
+    # Is this an array type?
+    if ($def->{data_type} =~ s/^(.*)\[\]$/$1/) {
+      $class->add_array_type($name, $def);
 
-    Carp::confess("Attempt to add property $name with unknown data_type $def->{data_type}")
-      unless $ix_type && $ix_type->{data_type};
+      # add_array_type will fill this in
+      delete $info{ $name };
+    } else {
+      my $ix_type = $IX_TYPE{ $def->{data_type} };
 
-    my $col_info = {
-      is_nullable   => $def->{is_optional} ? 1 : 0,
-      default_value => $def->{default_value},
-      %$ix_type,
+      Carp::confess("Attempt to add property $name with unknown data_type $def->{data_type}")
+        unless $ix_type && $ix_type->{data_type};
 
-      ($def->{db_data_type} ? (data_type => $def->{db_data_type}) : ()),
-    };
+      my $col_info = {
+        is_nullable   => $def->{is_optional} ? 1 : 0,
+        default_value => $def->{default_value},
+        %$ix_type,
 
-    $class->add_columns($name, $col_info);
+        ($def->{db_data_type} ? (data_type => $def->{db_data_type}) : ()),
+      };
+
+      $class->add_columns($name, $col_info);
+    }
   }
 
   if ($class->can('ix_property_info')) {
@@ -134,6 +165,91 @@ sub ix_add_properties ($class, @pairs) {
   }
 
   return;
+}
+
+sub add_array_type ($class, $prop, $def) {
+  my $type = $def->{data_type};
+
+  my $ix_type = $IX_TYPE{ $type };
+
+  Carp::confess("Attempt to add property $prop with unknown data_type $type")
+    unless $ix_type && $ix_type->{data_type};
+
+  my $data_type = $ix_type->{db_data_type} // $ix_type->{data_type};
+
+  my $belongs_to = $class->table;
+  $belongs_to =~ s/s$//;
+
+  my $table = $belongs_to . '_ix_at_' . $prop;
+
+  my $class_name = $class;
+  $class_name .= "::Ix::At::\u$prop";
+
+  my $pkg = <<"EOF";
+package $class_name;
+
+use strict;
+use warnings;
+
+use base qw/DBIx::Class::Core/;
+
+__PACKAGE__->table("$table");
+
+__PACKAGE__->add_columns(
+  id        => { data_type => 'bigserial' },
+  accountId => { data_type => 'integer' },
+  ${belongs_to}Id => { data_type => 'integer' },
+  created   => { data_type => 'timestamptz', default_value => \\'NOW()' },
+  value     => { data_type => '$data_type' },
+);
+
+__PACKAGE__->set_primary_key('id');
+
+__PACKAGE__->belongs_to(
+  $belongs_to => '$class',
+  {
+    'foreign.id' => 'self.${belongs_to}Id',
+    'foreign.accountId' => 'self.accountId',
+  },
+);
+
+# XXX
+#   my (\$self, \$sqlt_table) = \@_;
+
+#   \$sqlt_table->add_index(name => 'idx_name', fields => ['name']);
+# }
+EOF
+
+  eval $pkg;
+  die "Failed to eval $pkg: $@\n" if $@;
+
+  no strict 'refs';
+  *{"${class}::array_class"} = sub { return { $table => $class_name } };
+  $class->has_many(
+    $prop => $class_name,
+    {
+      "foreign.${belongs_to}Id" => "self.id",
+      "foreign.accountId"       => "self.accountId",
+    },
+  );
+
+  $def->{is_array_type} = 1;
+  $def->{array_class} = $class_name;
+  $def->{rs} = $table;
+
+  # Install our info
+  if ($class->can('ix_property_info')) {
+    my $stored = $class->ix_property_info;
+    Carp::confess("attempt to re-add property $prop") if $stored->{$prop};
+    $stored->{$prop} = $def;
+  } else {
+    my $reader = sub ($self) { return $def };
+    Sub::Install::install_sub({
+      code => $reader,
+      into => $class,
+      as   => 'ix_property_info',
+    });
+  }
 }
 
 my %DEFAULT_VALIDATOR = (

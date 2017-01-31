@@ -52,7 +52,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
   my $prop_info = $rclass->ix_property_info;
   my %is_prop   = map  {; $_ => 1 }
                   (keys %$prop_info),
-                  ($rclass->ix_virtual_property_names);
+                  ($rclass->ix_virtual_property_names); # XXX - Unneeded?
 
   my @props;
   if ($arg->{properties}) {
@@ -86,7 +86,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
     @ids = grep {; ! $bad_idstr->($_) } @$ids;
   }
 
-  my %is_virtual = map {; $_ => 1 } $rclass->ix_virtual_property_names;
+  my %is_real = map {; $_ => 1 } $rclass->ix_real_property_names;
   my @rows = $self->search(
     {
       accountId => $accountId,
@@ -95,7 +95,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
       %$x_get_cond,
     },
     {
-      select => [ grep {; ! $is_virtual{$_} } @props ],
+      select => [ grep {; $is_real{$_} } @props ],
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
       %$x_get_attr,
     },
@@ -366,6 +366,8 @@ sub ix_create ($self, $ctx, $to_create) {
       next TO_CREATE;
     }
 
+    my %array_type_rec = $self->_get_array_recs($ctx, $properties);
+
     my %rec = (
       %$properties,
 
@@ -382,6 +384,8 @@ sub ix_create ($self, $ctx, $to_create) {
     my ($row, $error) = try {
       $ctx->schema->txn_do(sub {
         my $created = $self->create(\%rec);
+
+        $self->_create_array_recs($ctx, $created->id, %array_type_rec);
 
         # Fire a hook inside this transaction if necessary
         $rclass->ix_created($ctx, $created);
@@ -417,8 +421,14 @@ sub ix_create ($self, $ctx, $to_create) {
         $_ => 1
       } $rclass->ix_virtual_property_names;
 
+      my %is_array = map {;
+        $_ => 1
+      } $rclass->ix_array_type_property_names;
+
       my %created = map {;
-        $_ => $row->$_
+        $_ => $is_array{$_}
+                ? [ map {; $_->value } $row->$_ ]
+                : $row->$_
       } grep {;
         ! $is_virtual{$_}
       } $rclass->ix_property_names;
@@ -447,6 +457,87 @@ sub ix_create ($self, $ctx, $to_create) {
   $self->_ix_wash_rows([ values $result{created}->%* ]);
 
   return \%result;
+}
+
+sub _get_array_recs ($self, $ctx, $properties) {
+  my $accountId = $ctx->accountId;
+  my $rclass = $self->_ix_rclass;
+
+  my $cname = $rclass->table;
+  $cname =~ s/s$//;
+
+  my %array_type = $rclass->ix_array_type_properties;
+
+  my %rec;
+
+  for my $at (keys %array_type) {
+    if (defined(my $val = delete $properties->{$at})) {
+      # Must at least be here, means the argument was passed in
+      # and could be an empty list
+      $rec{$at} = [];
+
+      for my $item (@$val) {
+        push $rec{$at}->@*, {
+          accountId         => $accountId,
+          value             => $item,
+          class             => $array_type{$at}{rs},
+          belongs_to_column => "${cname}Id",
+        }
+      }
+    }
+  }
+
+  return %rec;
+}
+
+sub _create_array_recs ($self, $ctx, $parent_id, %rec) {
+  my $created;
+
+  for my $at_vals (values %rec) {
+    for my $rec (@$at_vals) {
+      my $rs         = delete $rec->{class};
+      my $belongs_to = delete $rec->{belongs_to_column};
+      my $class = $ctx->schema->resultset($rs);
+      $class->create({ %$rec, $belongs_to => $parent_id });
+      $created++;
+    }
+  }
+
+  return $created;
+}
+
+sub _update_array_recs ($self, $ctx, $row, %rec) {
+  my %changed;
+
+  for my $at (keys %rec) {
+    my %old = map {; $_->value   => $_ } $row->$at;
+    my %new = map {; $_->{value} => $_ } $rec{$at}->@*;
+
+    my @to_delete = grep {;
+      ! $new{$_}
+    } keys %old;
+
+    my @to_add = grep {;
+      ! $old{$_}
+    } keys %new;
+
+    for my $del (@to_delete) {
+      $old{$del}->delete;
+
+      $changed{$at}++;
+    }
+
+    for my $add (@to_add) {
+      my $rec = $new{$add};
+      my $rs = delete $rec->{class};
+      my $belongs_to = delete $rec->{belongs_to_column};
+      my $class = $ctx->schema->resultset($rs);
+      $class->create({ %$rec, $belongs_to => $row->id });
+      $changed{$at}++;
+    }
+  }
+
+  return keys %changed;
 }
 
 sub _ix_check_user_properties (
@@ -500,10 +591,18 @@ sub _ix_check_user_properties (
                   || $value->$_isa('JSON::XS::Boolean')
                 );
 
+      $ok ||= 1 if (
+           ref $value eq 'ARRAY'
+        && $prop_info->{$prop}{is_array_type}
+      );
+
       unless ($ok) {
         $property_error{$prop} = "invalid property value";
         next PROP;
       }
+    } elsif (! ref $value && $prop_info->{$prop}{is_array_type}) {
+      $property_error{$prop} = "invalid property value (must be an array)";
+      next PROP;
     }
 
     if (
@@ -548,9 +647,23 @@ sub _ix_check_user_properties (
 
     # These checks should probably always be last
     if (my $validator = $info->{validator}) {
-      if (my $error = $validator->($value)) {
-        $property_error{$prop} = $error;
-        next PROP;
+      if ($prop_info->{$prop}{is_array_type}) {
+        my $err;
+
+        for my $i (0..$#$value) {
+          if (my $error = $validator->($value->[$i])) {
+            $property_error{$prop}[$i] = $error;
+
+            $err++;
+          }
+        }
+
+        next PROP if $err;
+      } else {
+        if (my $error = $validator->($value)) {
+          $property_error{$prop} = $error;
+          next PROP;
+        }
       }
     }
 
@@ -560,8 +673,16 @@ sub _ix_check_user_properties (
       $value = $value ? 1 : 0;
     }
 
-    if (defined $value && $info->{data_type} eq 'string') {
-      $value = NFC($value);
+    if ($prop_info->{$prop}{is_array_type}) {
+      for my $item (@$value) {
+        if (defined $item && $info->{data_type} eq 'string') {
+          $item = NFC($item);
+        }
+      }
+    } else {
+      if (defined $value && $info->{data_type} eq 'string') {
+        $value = NFC($value);
+      }
     }
 
     $properties{$prop} = $value;
@@ -615,7 +736,13 @@ sub _ix_wash_rows ($self, $rows) {
     }
 
     for my $key ($by_type{string}->@*) {
-      $row->{$key} = "$row->{$key}" if defined $row->{$key};
+      if ($info->{$key}{is_array_type}) {
+        for my $val ($row->{$key}->@*) {
+          $val = "$val" if defined $val;
+        }
+      } else {
+        $row->{$key} = "$row->{$key}" if defined $row->{$key};
+      }
     }
 
     for my $key ($by_type{boolean}->@*) {
@@ -696,20 +823,34 @@ sub ix_update ($self, $ctx, $to_update) {
       next UPDATE;
     }
 
+    my %array_type_rec = $self->_get_array_recs($ctx, $user_prop);
+
     my ($ok, $error) = try {
       $ctx->schema->txn_do(sub {
         my %old = $row->get_inflated_columns;
+        for my $at ($rclass->ix_array_type_property_names) {
+          $old{$at} = $row->$at;
+        }
 
         $row->set_inflated_columns({ %$user_prop });
 
+        my @changed = $self->_update_array_recs($ctx, $row, %array_type_rec);
+
         my %new = $row->get_dirty_columns;
-        return $SKIPPED unless %new;
+        return $SKIPPED unless %new || @changed;
 
         $row->update({ modSeqChanged => $next_state });
 
         if (my $code = $rclass->can('ix_updated')) {
           my %changes = map {; $_ => { old => $old{$_}, new => $new{$_} } }
                         keys %new;
+
+          for my $at (@changed) {
+            $changes{$at} = {
+              old => $old{$at},
+              new => $row->$at,
+            };
+          }
 
           # Fire a hook inside this transaction if necessary
           $rclass->$code($ctx, $row, \%changes);

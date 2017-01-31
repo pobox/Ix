@@ -75,9 +75,9 @@ my $ctx = $Bakesale->get_context({
           notFound => undef,
           state => 8,
           list  => [
-            { id => $account{cookies}{4}, type => 'samoa',   }, # baked_at => 1455319240 },
-            { id => $account{cookies}{5}, type => 'tim tam', }, # baked_at => 1455310000 },
-            { id => $account{cookies}{6}, type => 'immortal', }, # baked_at => 1455310000 },
+            { id => $account{cookies}{4}, type => 'samoa', toppers => [],   }, # baked_at => 1455319240 },
+            { id => $account{cookies}{5}, type => 'tim tam', toppers => [], }, # baked_at => 1455310000 },
+            { id => $account{cookies}{6}, type => 'immortal', toppers => [], }, # baked_at => 1455310000 },
           ],
         },
         'a',
@@ -131,8 +131,8 @@ my @created_ids;
           newState => 9,
 
           created => {
-            yellow => { id => ignore(), baked_at => ignore(), expires_at => ignore(), delicious => ignore() },
-            gold   => { id => ignore(), baked_at => ignore(), expires_at => ignore(), },
+            yellow => { id => ignore(), baked_at => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
+            gold   => { id => ignore(), baked_at => ignore(), expires_at => ignore(), toppers => [], },
           },
           notCreated => {
             blue   => superhashof({
@@ -302,7 +302,7 @@ subtest "invalid sinceState" => sub {
       [
         cakesSet => superhashof({
           created => {
-            yum => superhashof({ baked_at => ignore() }),
+            yum => superhashof({ baked_at => ignore(), }),
           }
         }),
         'cake!',
@@ -381,8 +381,8 @@ subtest "invalid sinceState" => sub {
       [
         cookiesSet => superhashof({
           created => {
-            yellow => { id => ignore(), expires_at => ignore(), delicious => ignore(), },
-            red    => { id => ignore(), expires_at => ignore(), delicious => ignore(), },
+            yellow => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
+            red    => { id => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
           },
           notCreated => {
             green  => superhashof({
@@ -425,8 +425,8 @@ subtest "invalid sinceState" => sub {
           notFound => undef,
           state => 10,
           list  => set(
-            { id => $c_to_id{yellow}, type => 'yellow', baked_at => ignore() },
-            { id => $c_to_id{red}, type => 'red', baked_at => ignore() },
+            { id => $c_to_id{yellow}, type => 'yellow', baked_at => ignore(), toppers => [], },
+            { id => $c_to_id{red}, type => 'red', baked_at => ignore(), toppers => [], },
           ),
         },
         'a',
@@ -499,7 +499,7 @@ subtest "invalid sinceState" => sub {
           notFound => undef,
           state => 11,
           list  => [
-            { id => $c_to_id{yellow}, type => 'yellow', baked_at => ignore() },
+            { id => $c_to_id{yellow}, type => 'yellow', baked_at => ignore(), toppers => [], },
           ],
         },
         'a',
@@ -543,7 +543,7 @@ subtest "invalid sinceState" => sub {
           newState => 12,
 
           created => {
-            yellow => { id => ignore(), baked_at => ignore(), expires_at => ignore(), delicious => ignore(), },
+            yellow => { id => ignore(), baked_at => ignore(), expires_at => ignore(), delicious => ignore(), toppers => [], },
           },
           updated => { $account{cookies}{1} => $no_updates },
           notCreated => {
