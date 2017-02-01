@@ -8,7 +8,7 @@ use Safe::Isa;
 use experimental qw(lexical_subs postderef signatures);
 
 use Sub::Exporter -setup => [ qw(
-  boolean email enum domain idstr integer nonemptystr simplestr freetext
+  boolean email enum domain idstr optional_idstr integer nonemptystr simplestr freetext
 ) ];
 
 sub boolean {
@@ -115,6 +115,16 @@ sub integer ($min = '-Inf', $max = 'Inf') {
 
 sub idstr ($min = -2147483648, $max = 2147483647) {
   return sub ($x, @) {
+    return "invalid id string" unless $x =~ /\A(?:0|-?[1-9][0-9]*)\z/;
+    return "invalid id string" if $x < $min;
+    return "invalid id string" if $x > $max;
+    return;
+  }
+}
+
+sub optional_idstr ($min = -2147483648, $max = 2147483647) {
+  return sub ($x, @) {
+    return unless defined $x;
     return "invalid id string" unless $x =~ /\A(?:0|-?[1-9][0-9]*)\z/;
     return "invalid id string" if $x < $min;
     return "invalid id string" if $x > $max;
