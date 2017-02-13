@@ -149,7 +149,7 @@ $state =~ s/-\d+//;
     $res->single_sentence->arguments,
     {
       'cakeIds' => [
-        ( sort { $a <=> $b } @cake_id{qw(chocolate1 chocolate2)} ),
+        ( sort { $a cmp $b } @cake_id{qw(chocolate1 chocolate2)} ),
         $cake_id{pb1},
       ],
       'filter' => {
@@ -186,7 +186,7 @@ $state =~ s/-\d+//;
         # These will still be in .id asc order since we always sort on id
         # last to ensure consistency between results when all other sorts
         # leave adjacent rows that could be ordered differently
-        ( sort { $a <=> $b } @cake_id{qw(chocolate1 chocolate2)} ),
+        ( sort { $a cmp $b } @cake_id{qw(chocolate1 chocolate2)} ),
       ],
       'filter' => {
         'recipeId' => $secret1_recipe_id
@@ -308,7 +308,7 @@ $state =~ s/-\d+//;
   # Pagination
   my $p = 0;
 
-  for my $cid (sort { $a <=> $b } @cake_id{qw(chocolate1 chocolate2 pb1)}) {
+  for my $cid (sort { $a cmp $b } @cake_id{qw(chocolate1 chocolate2 pb1)}) {
     $res = $jmap_tester->request([
       [
         getCakeList => {

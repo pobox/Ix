@@ -4,11 +4,12 @@ package Ix::Validators;
 
 use JSON ();
 use Safe::Isa;
+use Ix::Util qw($ix_id_re);
 
 use experimental qw(lexical_subs postderef signatures);
 
 use Sub::Exporter -setup => [ qw(
-  boolean email enum domain idstr integer nonemptystr simplestr freetext
+  boolean email enum domain idstr integer nonemptystr simplestr freetext state
 ) ];
 
 sub boolean {
@@ -113,11 +114,20 @@ sub integer ($min = '-Inf', $max = 'Inf') {
   };
 }
 
-sub idstr ($min = -2147483648, $max = 2147483647) {
+sub state ($min = -2**31, $max = 2**31-1) {
   return sub ($x, @) {
-    return "invalid id string" unless $x =~ /\A(?:0|-?[1-9][0-9]*)\z/;
-    return "invalid id string" if $x < $min;
-    return "invalid id string" if $x > $max;
+    return "not an integer" unless $x =~ /\A[-+]?(?:[0-9]|[1-9][0-9]*)\z/;
+    return "value below minimum of $min" if $x < $min;
+    return "value above maximum of $max" if $x > $max;
+    return;
+  };
+}
+
+sub idstr {
+  return sub ($x, @) {
+    return "invalid id string" unless defined $x; # weak
+    return "invalid id string" if ref $x;
+    return "invalid id string" if $x !~ /\A$ix_id_re\z/;
     return;
   }
 }

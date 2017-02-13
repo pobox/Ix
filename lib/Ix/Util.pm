@@ -5,11 +5,37 @@ use experimental qw(signatures postderef);
 
 use DateTime::Format::Pg;
 use DateTime::Format::RFC3339;
-use Sub::Exporter -setup => [ qw(parsedate parsepgdate differ) ];
 use Scalar::Util qw(reftype);
+use Data::GUID qw(guid_string);
+
+use Package::Generator;
+
+use Sub::Exporter -setup => {
+  exports    => [ qw(parsedate parsepgdate differ ix_new_id) ],
+  collectors => [
+    '$ix_id_re' => \'_export_ix_id_re',
+  ],
+};
+
+sub _export_ix_id_re {
+  my ($class, $value, $data) = @_;
+
+  Package::Generator->assign_symbols(
+    $data->{into},
+    [
+      # http://stackoverflow.com/questions/17146061/extract-guid-from-line-via-regular-expression-in-perl
+      # For now, this is just a straight up guid
+      ix_id_re => \qr/([a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-([a-f\d]){12})/an,
+    ],
+  );
+
+  return 1;
+}
 
 my $pg = DateTime::Format::Pg->new();
 my $rfc3339 = DateTime::Format::RFC3339->new();
+
+sub ix_new_id { lc guid_string() }
 
 sub parsepgdate ($str) {
   my $dt;

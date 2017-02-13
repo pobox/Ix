@@ -16,9 +16,7 @@ __PACKAGE__->ix_add_columns;
 __PACKAGE__->ix_add_properties(
   type   => { data_type => 'string',     },
   cakeId => {
-    data_type    => 'string',
-    db_data_type => 'integer',
-    validator    => idstr(),
+    data_type    => 'idstr',
     xref_to      => 'cakes'
   },
 );

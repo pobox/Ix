@@ -4,6 +4,7 @@ use experimental qw(lexical_subs signatures postderef);
 
 package Bakesale::Test {
   use File::Temp qw(tempdir);
+  use Ix::Util qw(ix_new_id);
 
   sub new_test_app_and_tester ($self) {
     require JMAP::Tester;
@@ -44,7 +45,7 @@ package Bakesale::Test {
     my $user_rs = $schema->resultset('User');
 
     my $user1 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => ix_new_id(),
       username  => 'testadmin',
       status    => 'active',
       modSeqCreated => 1,
@@ -62,7 +63,7 @@ package Bakesale::Test {
     my $user_rs = $schema->resultset('User');
 
     my $user1 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => ix_new_id(),
       username  => 'rjbs',
       status    => 'active',
       modseq(1)
@@ -71,7 +72,7 @@ package Bakesale::Test {
     $user1 = $user_rs->single({ id => $user1->id });
 
     my $user2 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => ix_new_id(),
       username  => 'neilj',
       status    => 'active',
       modseq(1)
@@ -80,7 +81,7 @@ package Bakesale::Test {
     $user2 = $user_rs->single({ id => $user2->id });
 
     my $user3 = $user_rs->create({
-      accountId => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      accountId => ix_new_id(),
       username  => 'alh',
       status    => 'active',
       modseq(1)
@@ -179,7 +180,7 @@ package Bakesale {
     if (my $user_id = $req->cookies->{bakesaleUserId}) {
       $user_id =~ s/"(.*)"/$1/;
 
-      if ($user_id < 0) {
+      if ($ENV{BAD_ID} && $user_id eq $ENV{BAD_ID}) {
         http_throw(Gone => {
           payload => { error => "bad auth" },
         });

@@ -18,9 +18,7 @@ __PACKAGE__->ix_add_properties(
   layer_count => { data_type => 'integer',  validator => integer(1, 10)  },
   baked_at    => { data_type => 'timestamptz', is_immutable => 1 },
   recipeId    => {
-    data_type    => 'string',
-    db_data_type => 'integer',
-    validator    => idstr(),
+    data_type    => 'idstr',
     xref_to      => 'cakeRecipes'
   },
 );

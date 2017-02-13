@@ -8,10 +8,13 @@ use experimental qw(signatures postderef);
 
 use Ix::StateComparison;
 use Ix::Validators;
+use Ix::Util qw(ix_new_id);
 
 sub ix_account_type { Carp::confess("ix_account_type not implemented") }
 
-sub ix_type_key { Carp::confess("ix_type_key not implemented") }
+# Checked for in ix_finalize
+# sub ix_type_key { }
+
 sub ix_type_key_singular ($self) {
   $self->ix_type_key =~ s/s\z//r;
 }
@@ -42,18 +45,25 @@ sub ix_mutable_properties ($self, $ctx) {
 
 sub ix_default_properties { return {} }
 
+sub new ($class, $attrs) {
+  # Are we an actual Ix result?
+  if ($class->can('ix_type_key')) {
+    $attrs->{id} //= ix_new_id();
+  }
+
+  return $class->next::method($attrs);
+}
+
 sub ix_add_columns ($class) {
   $class->ix_add_properties(
     id            => {
-      data_type     => 'string',
-      db_data_type  => 'integer',
-      default_value => \q{pseudo_encrypt(nextval('key_seed_seq')::int)},
+      data_type     => 'idstr',
       is_immutable  => 1,
     },
   );
 
   $class->add_columns(
-    accountId     => { data_type => 'integer' },
+    accountId     => { data_type => 'uuid' },
     created       => { data_type => 'timestamptz', default_value => \'NOW()' },
     modSeqCreated => { data_type => 'integer' },
     modSeqChanged => { data_type => 'integer' },
@@ -91,6 +101,7 @@ my %IX_TYPE = (
 
   boolean      => { data_type => 'boolean' },
   integer      => { data_type => 'integer', is_numeric => 1 },
+  idstr        => { data_type => 'uuid', },
 );
 
 sub ix_add_properties ($class, @pairs) {
@@ -140,12 +151,17 @@ my %DEFAULT_VALIDATOR = (
   integer => Ix::Validators::integer(),
   string  => Ix::Validators::simplestr(),
   boolean => Ix::Validators::boolean(),
+  idstr   => Ix::Validators::idstr(),
 );
 
 my %DID_FINALIZE;
 sub ix_finalize ($class) {
   if ($DID_FINALIZE{$class}++) {
     Carp::confess("tried to finalize $class a second time");
+  }
+
+  unless ($class->can('ix_type_key')) {
+    Carp::confess("Class $class must define an 'ix_type_key' method");
   }
 
   my $prop_info = $class->ix_property_info;
@@ -230,9 +246,9 @@ sub ix_compare_state ($self, $since, $state) {
   my $high_ms = $state->highest_modseq_for($self->ix_type_key);
   my $low_ms  = $state->lowest_modseq_for($self->ix_type_key);
 
-  state $bad_idstr = Ix::Validators::idstr();
+  state $bad_state = Ix::Validators::state();
 
-  if ($bad_idstr->($since)) {
+  if ($bad_state->($since)) {
     return Ix::StateComparison->bogus;
   }
 

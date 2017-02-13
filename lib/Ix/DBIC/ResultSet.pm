@@ -227,9 +227,9 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
   my @removed;
   for my $item (@rows) {
     if ($item->{dateDeleted}) {
-      push @removed, "$item->{id}";
+      push @removed, lc "$item->{id}";
     } else {
-      push @changed, "$item->{id}";
+      push @changed, lc "$item->{id}";
     }
   }
 
@@ -589,8 +589,10 @@ sub _ix_check_user_properties (
         "null value given for field requiring a $prop_info->{$prop}{data_type}";
     } else {
       # Required but has a 'default_value' (and didn't use ix_default_values?)
-      # Ugh, okay. (Looking at you 'id') -- alh, 2016-08-16
       next if $prop_info->{$prop}->{default_value};
+
+      # Special, for now, since we have to default the value in Perl
+      next if $prop eq 'id';
 
       $property_error{$prop} //= "no value given for required field";
     }
@@ -619,6 +621,11 @@ sub _ix_wash_rows ($self, $rows) {
 
     for my $key ($by_type{string}->@*) {
       $row->{$key} = "$row->{$key}" if defined $row->{$key};
+    }
+
+    for my $key ($by_type{idstr}->@*) {
+      # Stringify and lowercase
+      $row->{$key} = lc "$row->{$key}" if defined $row->{$key};
     }
 
     for my $key ($by_type{boolean}->@*) {

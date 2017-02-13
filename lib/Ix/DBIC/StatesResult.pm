@@ -8,7 +8,7 @@ use experimental qw(signatures postderef);
 
 sub ix_setup_states_result ($class) {
   $class->add_columns(
-    accountId     => { data_type => 'integer' },
+    accountId     => { data_type => 'uuid' },
     type          => { data_type => 'text' },
     lowestModSeq  => { data_type => 'integer' },
     highestModSeq => { data_type => 'integer' },

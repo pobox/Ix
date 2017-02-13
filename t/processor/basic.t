@@ -549,7 +549,7 @@ subtest "invalid sinceState" => sub {
           notCreated => {
             green   => superhashof({
               type => 'invalidProperties',
-              propertyErrors => { id => 'not a string' }
+              propertyErrors => { id => 'invalid id string' }
             }),
           },
         }),

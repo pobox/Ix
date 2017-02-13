@@ -13,6 +13,7 @@ use Test::Deep;
 use Test::Deep::JType;
 use Test::More;
 use Unicode::Normalize;
+use Ix::Util qw(ix_new_id);
 
 my $no_updates = any({}, undef);
 
@@ -142,7 +143,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
 
 {
   my @ids = values $account{cookies}->%*;
-  my $does_not_exist = $ids[-1]+1;
+  my $does_not_exist = ix_new_id();
 
   my $res = $jmap_tester->request([
     [
@@ -1776,7 +1777,7 @@ subtest "optional idstr" => sub {
   my $res = $jmap_tester->request([
     [
       setCookies => {
-        create => { raw => { type => 'dough', baked_at => undef, external_id => 5 } },
+        create => { raw => { type => 'dough', baked_at => undef, external_id => ix_new_id() } },
       },
     ],
   ]);
