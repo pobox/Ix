@@ -128,7 +128,7 @@ sub ix_get_extra_search ($self, $ctx, $arg = {}) {
     $attr->{'+columns'} ||= {};
     $attr->{'+columns'}{ranking} = \q{(
       SELECT COUNT(*)+1 FROM users s
-        WHERE s."modSeqCreated" < me."modSeqCreated" AND s."dateDestroyed" IS NULL AND s."accountId" = me."accountId"
+        WHERE s."modSeqCreated" < me."modSeqCreated" AND s."isActive" AND s."accountId" = me."accountId"
     )};
   }
 
@@ -141,7 +141,7 @@ sub ix_postprocess_create ($self, $ctx, $rows) {
   # Fill in ranking on create response
   my $query = q{
     SELECT COUNT(*)+1 FROM users s
-      WHERE s.id != ? AND s."dateDestroyed" IS NULL AND s."accountId" = ?
+      WHERE s.id != ? AND s."isActive" AND s."accountId" = ?
   };
 
   for my $r (@$rows) {

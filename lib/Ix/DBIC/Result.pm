@@ -68,7 +68,7 @@ sub ix_add_columns ($class) {
     created       => { data_type => 'timestamptz', default_value => \'NOW()' },
     modSeqCreated => { data_type => 'integer' },
     modSeqChanged => { data_type => 'integer' },
-    dateDestroyed   => { data_type => 'timestamptz', is_nullable => 1 },
+    dateDestroyed => { data_type => 'timestamptz', is_nullable => 1 },
     isActive      => { data_type => 'boolean', is_nullable => 1, default_value => 1 },
   );
 }
@@ -254,7 +254,7 @@ sub ix_update_extra_search ($self, $ctx, $arg) {
       # Don't include rows that were created and deleted after
       # our current state
       -or => [
-        'me.dateDestroyed' => undef,
+        'me.isActive'      => 1,
         'me.modSeqCreated' => { '<=' => $since },
       ],
     },

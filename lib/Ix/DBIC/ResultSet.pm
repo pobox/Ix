@@ -92,7 +92,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
     {
       accountId => $accountId,
       ($ids ? (id => \@ids) : ()),
-      dateDestroyed => undef,
+      isActive => 1,
       %$x_get_cond,
     },
     {
@@ -181,7 +181,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
     {
       select => [
         'id',
-        qw(me.dateDestroyed me.modSeqChanged),
+        qw(me.isActive me.modSeqChanged),
         $rclass->ix_update_extra_select->@*,
       ],
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
@@ -227,7 +227,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
   my @changed;
   my @removed;
   for my $item (@rows) {
-    if ($item->{dateDestroyed}) {
+    if (!$item->{isActive}) {
       push @removed, lc "$item->{id}";
     } else {
       push @changed, lc "$item->{id}";
@@ -687,7 +687,7 @@ sub ix_update ($self, $ctx, $to_update) {
       $row = $self->find({
         id => $id,
         accountId   => $accountId,
-        dateDestroyed => undef,
+        isActive    => 1,
       });
     }
 
@@ -820,7 +820,7 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
       $row = $self->search({
         id => $id,
         accountId => $accountId,
-        dateDestroyed => undef,
+        isActive  => 1,
       })->first;
     }
 
@@ -1144,7 +1144,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   for my $entity (@entities) {
     my $is_new     = $entity->modSeqCreated > $since_state;
     my $is_changed = $entity->modSeqChanged > $since_state;
-    my $is_removed = $entity->dateDestroyed;
+    my $is_removed = ! $entity->isActive;
 
     unless ($is_removed) {
       FILTER: for my $filter (keys $arg->{filter}->%*) {
@@ -1173,7 +1173,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       }
     }
 
-    my $was_removed = $entity->dateDestroyed && ! $is_changed;
+    my $was_removed = ! $entity->isActive && ! $is_changed;
 
     if ($is_removed && ! $is_new && ! $was_removed) {
       push @removed, "" . $entity->id;
