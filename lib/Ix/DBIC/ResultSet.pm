@@ -1060,6 +1060,11 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
 
   my $since_state = $arg->{sinceState};
 
+  my $limit = $arg->{maxChanges};
+  if (defined $limit && ( $limit !~ /^[0-9]+\z/ || $limit == 0 )) {
+    return $ctx->error(invalidArguments => { description => "invalid maxChanges" });
+  }
+
   return $ctx->error(invalidArguments => { description => "no sinceState given" })
     unless defined $since_state;
 
@@ -1141,6 +1146,8 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
   my @added;
   my @removed;
 
+  my $count = 0;
+
   for my $entity (@entities) {
     my $is_new     = $entity->modSeqCreated > $since_state;
     my $is_changed = $entity->modSeqChanged > $since_state;
@@ -1176,12 +1183,18 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     my $was_removed = $entity->dateDestroyed && ! $is_changed;
 
     if ($is_removed && ! $is_new && ! $was_removed) {
-      push @removed, "" . $entity->id;
+      push @removed, "" . $entity->id; $count++;
     } elsif (! $is_removed && $is_new) {
-      push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+      push @added, { index => $i, "${key1}Id" => "" . $entity->id }; $count++;
     } elsif (! $is_removed && $is_changed) {
       push @removed, "" . $entity->id;
-      push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+      push @added, { index => $i, "${key1}Id" => "" . $entity->id }; $count+=2;
+    }
+
+    if ($limit && $count > $limit) {
+      return $ctx->error(tooManyChanges => {
+        description => "there are more changes than your requested limit",
+      });
     }
 
     $i++ unless $is_removed;

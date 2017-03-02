@@ -1407,5 +1407,58 @@ subtest "distinct rows only" => sub {
   ) or diag explain $res->as_stripped_struct;
 };
 
+subtest "tooManyChanges" => sub {
+  subtest "Plenty of space for more changes" => sub {
+    my $res = $jmap_tester->request([[
+      getCakeListUpdates => {
+        sinceState => 1,
+        maxChanges => 100,
+      },
+    ]]);
+
+    jcmp_deeply(
+      $res->sentence(0)->arguments,
+      superhashof({
+        added => [ superhashof({ index => ignore() }) ],
+        removed => [ ignore(), ignore() ],
+      }),
+      'got a good response, with both added/removed elements'
+    );
+  };
+
+  subtest "Exact amount of changes" => sub {
+    my $res = $jmap_tester->request([[
+      getCakeListUpdates => {
+        sinceState => 1,
+        maxChanges => 3,
+      },
+    ]]);
+
+    jcmp_deeply(
+      $res->sentence(0)->arguments,
+      superhashof({
+        added => [ superhashof({ index => ignore() }) ],
+        removed => [ ignore(), ignore() ],
+      }),
+      'got a good response, with both added/removed elements'
+    );
+  };
+
+  subtest "Not enough room for all the changes" => sub {
+    my $res = $jmap_tester->request([[
+      getCakeListUpdates => {
+        sinceState => 1,
+        maxChanges => 2,
+      },
+    ]]);
+
+    is(
+      $res->sentence(0)->arguments->{type},
+      'tooManyChanges',
+      'got correct error'
+    ) or diag explain $res->as_stripped_struct;
+  };
+};
+
 done_testing;
 
