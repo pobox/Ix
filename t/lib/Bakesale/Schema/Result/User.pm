@@ -13,7 +13,7 @@ __PACKAGE__->table('users');
 __PACKAGE__->ix_add_columns;
 
 __PACKAGE__->ix_add_properties(
-  username    => { data_type => 'string' },
+  username    => { data_type => 'istring' },
   status      => { data_type => 'string', validator => enum([ qw(active okay whatever) ]) },
   ranking     => { data_type => 'integer', is_virtual => 1 },
 );
@@ -153,5 +153,30 @@ sub ix_postprocess_create ($self, $ctx, $rows) {
 
   return;
 }
+
+sub ix_get_list_sort_map {
+  return {
+    username => { },
+    status   => { },
+    ranking  => { },
+  };
+}
+
+sub ix_get_list_filter_map {
+  return {
+    username => { },
+    status   => { },
+    ranking  => { },
+  };
+}
+
+sub ix_get_list_fetchable_map { {} }
+
+sub ix_get_list_joins { () }
+
+sub ix_get_list_check { }
+sub ix_get_list_updates_check { }
+
+sub ix_get_list_enabled { 1 }
 
 1;

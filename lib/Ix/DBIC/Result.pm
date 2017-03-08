@@ -101,6 +101,7 @@ sub ix_add_unique_constraint ($class, @constraint) {
 my %IX_TYPE = (
   # idstr should get done this way in the future
   string       => { data_type => 'text' },
+  istring      => { data_type => 'citext' },
   timestamptz  => { data_type => 'timestamptz' },
 
   boolean      => { data_type => 'boolean' },
@@ -166,6 +167,7 @@ sub ix_add_properties ($class, @pairs) {
 my %DEFAULT_VALIDATOR = (
   integer => Ix::Validators::integer(),
   string  => Ix::Validators::simplestr(),
+  istring => Ix::Validators::simplestr(),
   boolean => Ix::Validators::boolean(),
   idstr   => Ix::Validators::idstr(),
 );

@@ -1891,4 +1891,30 @@ subtest "friendly duplicate key errors" => sub {
   );
 };
 
+subtest "ix_custom_deployment_statements" => sub {
+  my $set_res = $jmap_tester->request([
+    [ setUsers => {
+      create => {
+        first => { username => 'someuser', },
+      },
+    } ],
+  ]);
+
+  my $set = $set_res->single_sentence->as_set;
+  ok(my $id = $set->as_set->created_id('first'), 'created one user');
+
+  my $get_res = $jmap_tester->request([
+    [ getUserList => {
+      filter => { username => 'SOMEUSER' },
+    } ],
+  ]);
+
+  jcmp_deeply(
+    $get_res->single_sentence->arguments->{userIds},
+    [ $id ],
+    'Able to grab our user using case-insensitive search'
+  );
+};
+
+
 done_testing;

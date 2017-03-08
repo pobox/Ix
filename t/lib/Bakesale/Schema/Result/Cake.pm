@@ -278,5 +278,4 @@ sub ix_get_list_updates_check ($self, $ctx, $arg, $search) {
 
 sub ix_get_list_enabled { 1 }
 
-
 1;

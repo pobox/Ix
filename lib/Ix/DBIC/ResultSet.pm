@@ -582,7 +582,7 @@ sub _ix_check_user_properties (
       }
     }
 
-    if (defined $value && $info->{data_type} eq 'string') {
+    if (defined $value && $info->{data_type} =~ /\Ai?string\z/) {
       $value = NFC($value);
     }
 
@@ -638,7 +638,7 @@ sub _ix_wash_rows ($self, $rows) {
       $row->{$key} = 0 + $row->{$key} if defined $row->{$key};
     }
 
-    for my $key ($by_type{string}->@*) {
+    for my $key ($by_type{string}->@*, $by_type{istring}->@*) {
       $row->{$key} = "$row->{$key}" if defined $row->{$key};
     }
 
