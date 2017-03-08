@@ -690,9 +690,9 @@ sub ix_update ($self, $ctx, $to_update) {
     my $row;
 
     unless ($bad_idstr->($id)) {
-      $row = $self->find({
-        id => $id,
-        accountId   => $accountId,
+      $row = $self->single({
+        id            => $id,
+        accountId     => $accountId,
         dateDestroyed => undef,
       });
     }
@@ -823,11 +823,11 @@ sub ix_destroy ($self, $ctx, $to_destroy) {
     my $row;
 
     unless ($bad_idstr->($id)) {
-      $row = $self->search({
-        id => $id,
-        accountId => $accountId,
+      $row = $self->single({
+        id            => $id,
+        accountId     => $accountId,
         dateDestroyed => undef,
-      })->first;
+      });
     }
 
     unless ($row) {

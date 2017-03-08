@@ -1891,4 +1891,51 @@ subtest "friendly duplicate key errors" => sub {
   );
 };
 
+subtest "cannot update a destroyed row" => sub {
+  my $create_res = $jmap_tester->request([
+    [ setUsers => {
+      create => {
+        first  => { username => 'auser', },
+      },
+    } ],
+  ]);
+
+  ok(
+    my $first_id = $create_res->single_sentence->as_set->created_id('first'),
+    'created first user'
+  );
+
+  # Destroy it
+  my $destroy_res = $jmap_tester->request([
+    [ setUsers => {
+      destroy => [ $first_id ],
+    } ],
+  ]);
+
+  is(
+    $destroy_res->single_sentence->as_set->destroyed_ids,
+    1,
+    'destroyed first user'
+  );
+
+  my $update_res = $jmap_tester->request([
+    [ setUsers => {
+      update => {
+        $first_id => { username => 'buser' },
+      },
+    } ]
+  ]);
+
+  jcmp_deeply(
+    $update_res->single_sentence->arguments->{notUpdated},
+    {
+      $first_id => {
+        'description' => 'no such record found',
+        'type' => 'notFound'
+      },
+    },
+    "cannot update a destroyed record"
+  );
+};
+
 done_testing;
