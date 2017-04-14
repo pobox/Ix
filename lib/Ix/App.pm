@@ -62,7 +62,18 @@ has transaction_log_enabled => (
   default => 0,
 );
 
+has _schema => (
+  is => 'ro',
+  lazy => 1,
+  clearer => '_clear_schema',
+  default => sub ($self, @) {
+    $self->processor->schema_connection;
+  },
+);
+
 sub to_app ($self) {
+  $self->_schema; # initialize early
+
   my $app = sub ($env) {
     my $req = Plack::Request->new($env);
 
@@ -104,7 +115,10 @@ sub to_app ($self) {
 
     my $ctx;
     my $res = try {
-      $ctx = $self->processor->context_from_plack_request($req);
+      $ctx = $self->processor->context_from_plack_request(
+        $req,
+        { schema => $self->_schema },
+      );
       Carp::confess("could not establish context")
         unless $ctx && $ctx->does('Ix::Context');
       $self->_core_request($ctx, $req);
@@ -148,7 +162,7 @@ sub to_app ($self) {
       $env->{'psgi.errors'}->print("exception was reported: $_\n")
     }
 
-    if (blessed($res)) { 
+    if (blessed($res)) {
       for my $k (keys %HEADER) {
         $res->header($k => $HEADER{$k});
       }

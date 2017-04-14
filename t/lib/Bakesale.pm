@@ -6,7 +6,7 @@ package Bakesale::Test {
   use File::Temp qw(tempdir);
   use Ix::Util qw(ix_new_id);
 
-  sub new_test_app_and_tester ($self) {
+  sub new_test_env ($self) {
     require JMAP::Tester;
     require LWP::Protocol::PSGI;
 
@@ -16,12 +16,17 @@ package Bakesale::Test {
 
     state $n;
     $n++;
-    LWP::Protocol::PSGI->register($app->to_app, host => 'bakesale.local:' . $n);
+    my $guard = LWP::Protocol::PSGI->register($app->to_app, host => 'bakesale.local:' . $n);
+
     my $jmap_tester = JMAP::Tester->new({
       api_uri => "http://bakesale.local:$n/jmap",
     });
 
-    return ($app, $jmap_tester);
+    return {
+      app     => $app,
+      tester  => $jmap_tester,
+      guard   => $guard,
+    };
   }
 
   my %TEST_DBS;
@@ -182,22 +187,22 @@ package Bakesale {
     },
   );
 
-  sub get_context ($self, $arg) {
+  sub get_context ($self, $arg = {}) {
     Bakesale::Context->new({
       userId    => $arg->{userId},
-      schema    => $self->schema_connection,
+      schema    => $arg->{schema} // $self->schema_connection,
       processor => $self,
     });
   }
 
-  sub get_system_context ($self) {
+  sub get_system_context ($self, $arg = {}) {
     Bakesale::Context::System->new({
-      schema    => $self->schema_connection,
+      schema    => $arg->{schema} // $self->schema_connection,
       processor => $self,
     });
   }
 
-  sub context_from_plack_request ($self, $req) {
+  sub context_from_plack_request ($self, $req, $arg = {}) {
     if (my $user_id = $req->cookies->{bakesaleUserId}) {
       $user_id =~ s/"(.*)"/$1/;
 
@@ -207,7 +212,10 @@ package Bakesale {
         });
       }
 
-      return $self->get_context({ userId => $user_id });
+      return $self->get_context({
+        userId => $user_id,
+        schema => $arg->{schema},
+      });
     }
 
     http_throw('Gone');
