@@ -106,10 +106,11 @@ sub boolean {
 
 sub enum ($values) {
   my %is_valid = map {; $_ => 1 } @$values;
-  return sub ($x, @) {
+  my $validator = sub ($x, @) {
     return "not a valid value" unless $is_valid{$x};
     return;
   };
+  return ($validator, valid_values => [ sort keys %is_valid ]);
 }
 
 sub integer ($min = '-Inf', $max = 'Inf') {
