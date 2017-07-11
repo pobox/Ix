@@ -19,7 +19,7 @@ __PACKAGE__->ix_add_properties(
     data_type     => 'string',
     canonicalizer => sub ($value) { $value =~ s/ cookie\z//r; },
   },
-  batch      => { data_type => 'integer', is_immutable => 1 },
+  batch      => { data_type => 'integer', client_may_init => 0, client_may_update => 0 },
   baked_at   => { data_type => 'timestamptz', is_optional => 1 },
   expires_at => { data_type => 'timestamptz', is_optional => 0 },
   delicious  => { data_type => 'string', is_optional => 0 },
@@ -39,7 +39,7 @@ sub ix_postprocess_set { $next_batch++ }
 
 sub ix_default_properties {
   return {
-    baked_at  => Ix::DateTime->now,
+    baked_at   => Ix::DateTime->now,
     expires_at => Ix::DateTime->now->add(days => 3),
     delicious  => 'yes',
     batch      => sub { $next_batch }

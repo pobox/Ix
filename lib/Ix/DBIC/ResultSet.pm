@@ -320,7 +320,7 @@ sub ix_create ($self, $ctx, $to_create) {
   my %result;
 
   # TODO do this once during ix_finalize -- rjbs, 2016-05-10
-  my %is_user_prop = map {; $_ => 1 } $rclass->ix_mutable_properties($ctx);
+  my %is_user_prop = map {; $_ => 1 } $rclass->ix_client_init_ok_properties($ctx);
 
   my $prop_info = $rclass->ix_property_info;
 
@@ -685,7 +685,7 @@ sub ix_update ($self, $ctx, $to_update) {
 
   my %updated;
 
-  my %is_user_prop = map {; $_ => 1 } $rclass->ix_mutable_properties($ctx);
+  my %is_user_prop = map {; $_ => 1 } $rclass->ix_client_update_ok_properties($ctx);
   my $prop_info = $rclass->ix_property_info;
 
   state $bad_idstr = idstr();
@@ -1169,9 +1169,13 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     # Query on all immutable fields that were passed in to the filter to
     # condense our list of possible changes; otherwise we may end up querying
     # the entire table.
+    #
+    # XXX This exposes the fact that we said "immutable" but really meant
+    # "can't be set by client."  Some properties were marked immutable but
+    # could actually be updated by the server. -- rjbs, 2017-07-11
     my $filter_map = $rclass->ix_get_list_filter_map;
     my $prop_info = $rclass->ix_property_info;
-    my %is_user_prop = map {; $_ => 1 } $rclass->ix_mutable_properties($ctx);
+    my %is_user_prop = map {; $_ => 1 } $rclass->ix_client_update_ok_properties($ctx);
 
     my %immutable = map {;
       my $prop = $_ =~ /\./ ? $_ : "me.$_"; # me.<...>
