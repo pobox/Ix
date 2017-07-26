@@ -16,7 +16,7 @@ __PACKAGE__->ix_add_columns;
 __PACKAGE__->ix_add_properties(
   type        => { data_type => 'string',     },
   layer_count => { data_type => 'integer',  validator => integer(1, 10)  },
-  baked_at    => { data_type => 'timestamptz', is_immutable => 1 },
+  baked_at    => { data_type => 'timestamptz', client_may_init => 0, client_may_update => 0 },
   recipeId    => {
     data_type    => 'idstr',
     xref_to      => 'cakeRecipes',

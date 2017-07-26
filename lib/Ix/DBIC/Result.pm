@@ -35,7 +35,7 @@ sub ix_property_names ($self, @) {
   return keys $self->ix_property_info->%*;
 }
 
-sub ix_mutable_properties ($self, $ctx) {
+sub ix_client_update_ok_properties ($self, $ctx) {
   my $prop_info = $self->ix_property_info;
 
   if ($ctx->root_context->is_system) {
@@ -43,7 +43,19 @@ sub ix_mutable_properties ($self, $ctx) {
   }
 
   return
-    grep {; ! $prop_info->{$_}{is_immutable} && ! $prop_info->{$_}{is_virtual} }
+    grep {; $prop_info->{$_}{client_may_update} && ! $prop_info->{$_}{is_virtual} }
+    keys %$prop_info;
+}
+
+sub ix_client_init_ok_properties ($self, $ctx) {
+  my $prop_info = $self->ix_property_info;
+
+  if ($ctx->root_context->is_system) {
+    return keys %$prop_info;
+  }
+
+  return
+    grep {; $prop_info->{$_}{client_may_init} && ! $prop_info->{$_}{is_virtual} }
     keys %$prop_info;
 }
 
@@ -62,7 +74,8 @@ sub ix_add_columns ($class) {
   $class->ix_add_properties(
     id            => {
       data_type     => 'idstr',
-      is_immutable  => 1,
+      client_may_init   => 0,
+      client_may_update => 0,
     },
   );
 
@@ -253,6 +266,8 @@ sub ix_finalize ($class) {
   for my $name (keys %$prop_info) {
     my $info = $prop_info->{$name};
 
+    $info->{client_may_update} = 1 unless exists $info->{client_may_update};
+    $info->{client_may_init}   = 1 unless exists $info->{client_may_init};
     $info->{validator} //= $DEFAULT_VALIDATOR{ $info->{data_type} };
   }
 }
