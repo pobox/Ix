@@ -2097,4 +2097,110 @@ subtest "string normalization" => sub {
   ) or diag explain $res->as_stripped_struct;
 };
 
+subtest "client may init and/or update" => sub {
+
+  my $res = $jmap_tester->request([
+    [ setBiscuits => {
+        create => {
+           foo => { type => 'anzac' },
+           bar => { type => 'anzac', qty => jnum(1) },
+        },
+    } ],
+  ]);
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types( $res->as_pairs ),
+    [
+      [
+        'biscuitsSet',
+        {
+          'created' => {
+            'foo' => {
+              'id' => ignore(),
+              'qty' => undef
+            }
+          },
+          'destroyed' => undef,
+          'newState' => '1',
+          'notCreated' => {
+            'bar' => {
+              'description' => 'invalid property values',
+              'propertyErrors' => {
+                'qty' => 'property cannot be set by client'
+              },
+              'type' => 'invalidProperties'
+            }
+          },
+          'notDestroyed' => {},
+          'notUpdated' => {},
+          'oldState' => '0',
+          'updated' => undef
+        }
+      ]
+    ],
+    "can't create where client_may_init => 0, but client_may_update => 1"
+  );
+
+  my $cid = $res->sentence(0)->as_set->created_id('foo');
+
+  my $success = $jmap_tester->request([[
+    setBiscuits => { update => { $cid => { qty => jnum(1) } } }
+    ]]);
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types( $success->as_pairs ),
+    [
+      [
+        'biscuitsSet',
+        {
+          'created' => undef,
+          'destroyed' => undef,
+          'newState' => '2',
+          'notCreated' => {},
+          'notDestroyed' => {},
+          'notUpdated' => {},
+          'oldState' => '1',
+          'updated' => {
+            $cid => undef
+          }
+        }
+      ]
+    ],
+    "can still update where client_may_init => 0, but client_may_update => 1"
+  );
+
+  my $failure = $jmap_tester->request([[
+    setBiscuits => { update => { $cid => { type => 'shortbread' } } }
+    ]]);
+
+  cmp_deeply(
+    $jmap_tester->strip_json_types( $failure->as_pairs ),
+    [
+      [
+        'biscuitsSet',
+        {
+          'created' => undef,
+          'destroyed' => undef,
+          'newState' => '2',
+          'notCreated' => {},
+          'notDestroyed' => {},
+          'notUpdated' => {
+            $cid => {
+              'description' => 'invalid property values',
+              'propertyErrors' => {
+                'type' => 'property cannot be set by client'
+              },
+              'type' => 'invalidProperties'
+            }
+          },
+          'oldState' => '2',
+          'updated' => {}
+        }
+      ]
+    ],
+    "can't update where client_may_init => 1, but client_may_update => 0"
+  );
+
+};
+
 done_testing;
