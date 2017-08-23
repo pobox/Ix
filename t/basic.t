@@ -2099,6 +2099,9 @@ subtest "string normalization" => sub {
 
 subtest "client may init and/or update" => sub {
 
+  # Attempt creating two objects, where:
+  #   type => { client_may_init => 1, client_may_update => 0 }
+  #   qty  => { client_may_init => 0, client_may_update => 1 }
   my $res = $jmap_tester->request([
     [ setBiscuits => {
         create => {
@@ -2108,98 +2111,56 @@ subtest "client may init and/or update" => sub {
     } ],
   ]);
 
-  cmp_deeply(
-    $jmap_tester->strip_json_types( $res->as_pairs ),
-    [
-      [
-        'biscuitsSet',
-        {
-          'created' => {
-            'foo' => {
-              'id' => ignore(),
-              'qty' => undef
-            }
-          },
-          'destroyed' => undef,
-          'newState' => '1',
-          'notCreated' => {
-            'bar' => {
-              'description' => 'invalid property values',
-              'propertyErrors' => {
-                'qty' => 'property cannot be set by client'
-              },
-              'type' => 'invalidProperties'
-            }
-          },
-          'notDestroyed' => {},
-          'notUpdated' => {},
-          'oldState' => '0',
-          'updated' => undef
-        }
-      ]
-    ],
-    "can't create where client_may_init => 0, but client_may_update => 1"
+  my $set = $res->single_sentence('biscuitsSet')->as_set;
+
+  # 'foo' created
+  my $created_id =  $set->created_id('foo');
+  ok($created_id, "created with client_may_init => 1");
+
+  # 'bar' notCreated
+  jcmp_deeply(
+    $set->create_errors->{bar},
+    superhashof({
+      'description' => 'invalid property values',
+      'propertyErrors' => {
+        'qty' => 'property cannot be set by client'
+      },
+      'type' => 'invalidProperties'
+    }),
+    "can't create with client_may_init => 0"
   );
 
-  my $cid = $res->sentence(0)->as_set->created_id('foo');
-
-  my $success = $jmap_tester->request([[
-    setBiscuits => { update => { $cid => { qty => jnum(1) } } }
+  # 'qty' updated
+  my $update_res = $jmap_tester->request([[
+    setBiscuits => { update => { $created_id => { qty => jnum(1) } } }
     ]]);
 
-  cmp_deeply(
-    $jmap_tester->strip_json_types( $success->as_pairs ),
-    [
-      [
-        'biscuitsSet',
-        {
-          'created' => undef,
-          'destroyed' => undef,
-          'newState' => '2',
-          'notCreated' => {},
-          'notDestroyed' => {},
-          'notUpdated' => {},
-          'oldState' => '1',
-          'updated' => {
-            $cid => undef
-          }
-        }
-      ]
-    ],
-    "can still update where client_may_init => 0, but client_may_update => 1"
-  );
+  my $update_set = $update_res->single_sentence('biscuitsSet')->as_set;
 
-  my $failure = $jmap_tester->request([[
-    setBiscuits => { update => { $cid => { type => 'shortbread' } } }
+  jcmp_deeply(
+    $update_set->updated,
+    superhashof({ $created_id => ignore() }),
+    "update with client_may_update => 1"
+  ) or diag explain $update_res->as_stripped_struct;
+
+  # 'type' notUpdated
+  $update_res = $jmap_tester->request([[
+    setBiscuits => { update => { $created_id => { type => 'shortbread' } } }
     ]]);
 
-  cmp_deeply(
-    $jmap_tester->strip_json_types( $failure->as_pairs ),
-    [
-      [
-        'biscuitsSet',
-        {
-          'created' => undef,
-          'destroyed' => undef,
-          'newState' => '2',
-          'notCreated' => {},
-          'notDestroyed' => {},
-          'notUpdated' => {
-            $cid => {
-              'description' => 'invalid property values',
-              'propertyErrors' => {
-                'type' => 'property cannot be set by client'
-              },
-              'type' => 'invalidProperties'
-            }
-          },
-          'oldState' => '2',
-          'updated' => {}
-        }
-      ]
-    ],
-    "can't update where client_may_init => 1, but client_may_update => 0"
-  );
+  $update_set = $update_res->single_sentence('biscuitsSet')->as_set;
+
+  jcmp_deeply(
+    $update_set->update_errors->{$created_id},
+    superhashof({
+      'description' => 'invalid property values',
+      'propertyErrors' => {
+        'type' => 'property cannot be set by client'
+      },
+      'type' => 'invalidProperties'
+    }),
+    "cannot update where client_may_update => 0"
+  ) or diag explain $update_res->as_stripped_struct;
 
 };
 
