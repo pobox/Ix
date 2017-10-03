@@ -89,7 +89,7 @@ sub boolean {
 {
   my $tld_re =
     qr{
-       ([-0-9a-z]+)        # top level domain
+       ([-0-9a-z]+){1,63}  # top level domain
      }xi;
 
   my $domain_re =
@@ -101,6 +101,7 @@ sub boolean {
   my sub is_domain {
     my $value = shift;
     return unless defined $value and $value =~ /\A$domain_re\z/;
+    return unless length($value) < 256;
 
     # We used to further check that the TLD was a valid TLD.  This made a lot
     # more sense when there was a list of, say, 50 TLDs that changed only under
