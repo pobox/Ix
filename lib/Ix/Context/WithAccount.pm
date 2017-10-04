@@ -61,6 +61,26 @@ sub _build_state ($self) {
   });
 }
 
+# Each top-level transaction gets a new scratchpad, which is thrown away when
+# that transaction finishes; any internal JMAP calls made during the top-level
+# call also have access to it.  It can be used to store transient data during
+# the transaction.
+#
+# For example: you're updating 10 Foo rows that need to cause side effects in
+# related Bar rows. You can use the scratchpad to keep track of the Bar IDs
+# that need to be updated, and then at the end of the transaction (but before
+# it's committed), make a single call to setBars with the IDs stored in the
+# scratchpad.
+has scratchpad => (
+  is => 'rw',
+  isa => 'HashRef',
+  traits => ['Hash'],
+  default => sub { {} },
+  handles => {
+    _clear_scratchpad => 'clear',
+  }
+);
+
 # A wrapper around DBIC's txn_do. What this does is:
 #
 #  * increment our transaction depth
@@ -87,7 +107,9 @@ sub txn_do ($self, $code) {
     Carp::confess("We already have state before starting a transaction?!");
   }
 
-  # Start of a tree? Localize state so it goes away when we're done
+  # Start of a tree? Localize state and scratchpad so they go away when we're
+  # done
+  local $self->{scratchpad} = {}             if $self->_txn_level == 0;
   local $self->{state} = $self->_build_state if $self->_txn_level == 0;
 
   my $state = $self->state;
