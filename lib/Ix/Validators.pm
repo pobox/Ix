@@ -102,7 +102,7 @@ sub boolean {
     my $value = shift;
     $value =~ s/\.$//;
     return unless defined $value and $value =~ /\A$domain_re\z/;
-    return unless length($value) < 253;
+    return unless length($value) <= 253;
 
     # We used to further check that the TLD was a valid TLD.  This made a lot
     # more sense when there was a list of, say, 50 TLDs that changed only under
