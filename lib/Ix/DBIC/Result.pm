@@ -382,4 +382,22 @@ sub ix_create_base_state ($self) {
   }
 }
 
+sub ix_bump_state ($self, $ctx) {
+  my $type_key   = $self->ix_type_key;
+  my $next_state = $ctx->state->next_state_for($type_key);
+
+  my $ok = eval {
+    $ctx->txn_do(sub {
+      $self->update({
+        modSeqChanged => $next_state,
+      });
+
+      return 1;
+    });
+  };
+
+  $ctx->state->ensure_state_bumped($type_key) if $ok;
+  return $ok;
+}
+
 1;
