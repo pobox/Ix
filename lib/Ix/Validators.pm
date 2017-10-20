@@ -11,9 +11,67 @@ use experimental qw(lexical_subs postderef signatures);
 
 use Sub::Exporter -setup => [ qw(
   array_of
+  enum
   record
-  boolean email enum domain idstr integer nonemptystr simplestr freetext state
+
+  boolean
+  integer
+
+  string
+  nonemptystr simplestr freetext
+  email domain idstr state
 ) ];
+
+my $PRINTABLE = qr{[\pL\pN\pP\pS]};
+
+sub string ($input_arg = {}) {
+  my %arg = (
+    ascii     => $input_arg->{ascii    } // 0,
+    nonempty  => $input_arg->{nonempty } // 0,
+    oneline   => $input_arg->{oneline  } // 0,
+    trimmed   => $input_arg->{trimmed  } // 0,
+    printable => $input_arg->{printable} // 1,
+  );
+
+  $arg{maxlength} = $input_arg->{maxlength} // ($arg{oneline} ? 100 : 1000);
+
+  return sub ($x, @) {
+    return "not a string" unless defined $x; # weak
+    return "not a string" if ref $x;
+
+    if (0 == length $x) {
+      return unless $arg{nonempty};
+      return "string is empty";
+    }
+
+    return "string exceeds maximum length" if length $x > $arg{maxlength};
+
+    if ($arg{ascii}) {
+      return "string contains illegal characters" if $x =~ /\P{ASCII}/;
+    }
+
+    if ($arg{printable}) {
+      return "string contains no printable characters" unless $x =~ $PRINTABLE;
+    }
+
+    if ($arg{trimmed}) {
+      return "string contains leading whitespace" if $x =~ /\A\s/;
+      return "string contains trailing whitespace" if $x =~ /\s\z/;
+    }
+
+    if ($arg{oneline}) {
+      return "string contains vertical whitespace" if $x =~ /\v/;
+    }
+
+    return;
+  };
+}
+
+BEGIN {
+  *simplestr   = sub { string({ oneline  => 1 }) };
+  *nonemptystr = sub { string({ nonempty => 1 }) };
+  *freetext    = sub { string() };
+}
 
 sub array_of ($validator) {
   return sub ($x, @) {
@@ -194,38 +252,6 @@ sub idstr {
     return "invalid id string" if $x !~ /\A$ix_id_re\z/;
     return;
   }
-}
-
-sub simplestr {
-  return sub ($x, @) {
-    return "not a string" unless defined $x; # weak
-    return "not a string" if ref $x;
-    return unless length $x;
-    return "string contains only whitespace" unless $x =~ /\S/;
-    return "string contains vertical whitespace" if $x =~ /\v/;
-    return;
-  };
-}
-
-sub nonemptystr {
-  return sub ($x, @) {
-    return "not a string" unless defined $x; # weak
-    return "not a string" if ref $x;
-    return "string is empty" unless length $x;
-    return "string contains only whitespace" unless $x =~ /\S/;
-    return "string contains vertical whitespace" if $x =~ /\v/;
-    return;
-  };
-}
-
-sub freetext {
-  return sub ($x, @) {
-    return "not a string" unless defined $x; # weak
-    return "not a string" if ref $x;
-    return unless length $x;
-    return "string contains only whitespace" unless $x =~ /\S/;
-    return;
-  };
 }
 
 1;

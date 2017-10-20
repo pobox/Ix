@@ -183,8 +183,8 @@ sub ix_add_properties ($class, @pairs) {
 
 my %DEFAULT_VALIDATOR = (
   integer => Ix::Validators::integer(),
-  string  => Ix::Validators::simplestr(),
-  istring => Ix::Validators::simplestr(),
+  string  => Ix::Validators::string({ oneline => 1 }),
+  istring => Ix::Validators::string({ oneline => 1 }),
   boolean => Ix::Validators::boolean(),
   idstr   => Ix::Validators::idstr(),
 );
