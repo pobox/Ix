@@ -2161,6 +2161,72 @@ subtest "client may init and/or update" => sub {
 
 };
 
+subtest "is_immutable" => sub {
+  my $set_res = $jmap_tester->request([
+    [
+      setBiscuits => {
+        create => {
+           foo => { type => 'chicken', size => 'jumbo' },
+        },
+      },
+    ],
+  ]);
+
+  my $set = $set_res->single_sentence('biscuitsSet')->as_set;
+
+  my $obj = $set->created->{foo};
+  ok($obj, "we create an object for foo");
+
+  my $get_res = $jmap_tester->request([
+    [ getBiscuits => { ids => [ $obj->{id} ] } ]
+  ]);
+
+  is(
+    $get_res->single_sentence('biscuits')->arguments->{list}[0]{size},
+    'jumbo',
+    "the size was set properly",
+  );
+
+  {
+    my $update_res = $jmap_tester->request([
+      [ setBiscuits => { update => { $obj->{id} => { size => 'x-large' } } } ]
+    ]);
+
+    jcmp_deeply(
+      $update_res->single_sentence('biscuitsSet')->arguments->{notUpdated},
+      superhashof({ $obj->{id} => superhashof({}) }),
+      "client can't update immutable field",
+    );
+  }
+
+  {
+    my $ctx = $app->processor->get_system_context;
+
+    my $sys_res = $ctx->process_request([
+      [
+        setBiscuits => {
+          accountId => $account{users}{rjbs},
+          update    => { $obj->{id} => { size => 'x-large' } }
+        },
+        'x',
+      ]
+    ]);
+
+    jcmp_deeply(
+      $sys_res,
+      [
+        [
+          biscuitsSet => superhashof({
+            notUpdated => superhashof({ $obj->{id} => superhashof({}) }),
+          }),
+          'x',
+        ],
+      ],
+      "system can't update immutable field",
+    );
+  }
+};
+
 subtest "argument validation" => sub {
   my sub validate ($args) {
     $jmap_tester->request([[ validateArguments => $args ]])

@@ -39,11 +39,16 @@ sub ix_client_update_ok_properties ($self, $ctx) {
   my $prop_info = $self->ix_property_info;
 
   if ($ctx->root_context->is_system) {
-    return keys %$prop_info;
+    return
+      grep {;    ! $prop_info->{$_}{is_virtual}
+              && ! $prop_info->{$_}{is_immutable} }
+      keys %$prop_info;
   }
 
   return
-    grep {; $prop_info->{$_}{client_may_update} && ! $prop_info->{$_}{is_virtual} }
+    grep {;      $prop_info->{$_}{client_may_update}
+            && ! $prop_info->{$_}{is_virtual}
+            && ! $prop_info->{$_}{is_immutable} }
     keys %$prop_info;
 }
 
