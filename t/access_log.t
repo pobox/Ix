@@ -74,7 +74,7 @@ $res = $jmap_tester->request([
 ]);
 
 cmp_deeply(
-  $res->as_stripped_struct,
+  $res->as_stripped_triples,
   [
     [
       cakesSet => superhashof({

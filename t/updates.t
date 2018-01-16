@@ -48,7 +48,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "4" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 4, "old state: 4");
@@ -63,7 +63,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "0" } ]
     ]);
 
-    ok($res->as_struct->[0][1]{changed}->@*, 'can sync from "0" state');
+    ok($res->as_triples->[0][1]{changed}->@*, 'can sync from "0" state');
   };
 
   subtest "synchronize from the future" => sub {
@@ -71,7 +71,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "8" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'error', 'can not sync from future state');
 
     is($arg->{type}, "invalidArguments", "error type");
@@ -82,7 +82,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "2" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 2, "old state: 2");
@@ -97,7 +97,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "2", maxChanges => 30 } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 2, "old state: 2");
@@ -112,7 +112,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "2", maxChanges => 20 } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 2, "old state: 2");
@@ -127,7 +127,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "2", maxChanges => 15 } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 2, "old state: 2");
@@ -142,7 +142,7 @@ subtest "simple state comparisons" => sub {
       [ getCookieUpdates => { sinceState => "2", maxChanges => 8 } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cookieUpdates', 'cookie updates!!');
 
     is($arg->{oldState}, 2, "old state: 2");
@@ -172,7 +172,7 @@ subtest "complex state comparisons" => sub {
       ]);
 
       my $recipe_res = $jmap_tester->strip_json_types(
-        $cr_res->single_sentence->as_struct->[1]
+        $cr_res->single_sentence->as_triple->[1]
       );
 
       $recipe_id{$n} = $recipe_res->{created}{$n}{id};
@@ -199,7 +199,7 @@ subtest "complex state comparisons" => sub {
       ]);
 
       my $payload = $jmap_tester->strip_json_types(
-        $last_set_res->single_sentence->as_struct->[1]
+        $last_set_res->single_sentence->as_triple->[1]
       );
 
       for my $recipe (1 .. 5) {
@@ -219,7 +219,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "5-6" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cakeUpdates', 'cake updates!!');
 
     is($arg->{oldState}, '5-6', "old state: 5-6");
@@ -234,7 +234,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "2" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'error', 'can not sync from non-compount state');
 
     is($arg->{type}, "invalidArguments", "error type");
@@ -245,7 +245,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "0-3" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'error', 'can not sync from (one-part) too-low state');
 
     is($arg->{type}, "cannotCalculateChanges", "error type");
@@ -256,7 +256,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "3-0" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'error', 'can not sync from (one-part) too-low state');
 
     is($arg->{type}, "cannotCalculateChanges", "error type");
@@ -267,7 +267,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "4-6" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cakeUpdates', 'cake updates!!');
 
     is($arg->{oldState}, '4-6', "old state: 4-6");
@@ -289,7 +289,7 @@ subtest "complex state comparisons" => sub {
       [ getCakeUpdates => { sinceState => "5-5" } ]
     ]);
 
-    my ($type, $arg) = $res->single_sentence->as_struct->@*;
+    my ($type, $arg) = $res->single_sentence->as_triple->@*;
     is($type, 'cakeUpdates', 'cake updates!!');
 
     is($arg->{oldState}, '5-5', "old state: 5-5");
@@ -316,7 +316,7 @@ subtest "complex state comparisons" => sub {
         [ getCakeUpdates => { sinceState => "4-5", $test->[1]->%* } ]
       ]);
 
-      my ($type, $arg) = $res->single_sentence->as_struct->@*;
+      my ($type, $arg) = $res->single_sentence->as_triple->@*;
       is($type, 'cakeUpdates', 'cake updates!!');
 
       is($arg->{oldState}, '4-5', "old state: 4-5");
@@ -343,7 +343,7 @@ subtest "complex state comparisons" => sub {
         [ getCakeUpdates => { sinceState => "4-5", maxChanges => 5 } ]
       ]);
 
-      my ($type, $arg) = $res->single_sentence->as_struct->@*;
+      my ($type, $arg) = $res->single_sentence->as_triple->@*;
       is($type, 'cakeUpdates', 'cake updates!!');
 
       is($arg->{oldState}, '4-5', "old state: 4-5");
@@ -366,7 +366,7 @@ subtest "complex state comparisons" => sub {
         [ getCakeUpdates => { sinceState => $mid_state, maxChanges => 5 } ]
       ]);
 
-      my ($type, $arg) = $res->single_sentence->as_struct->@*;
+      my ($type, $arg) = $res->single_sentence->as_triple->@*;
       is($type, 'cakeUpdates', 'cake updates!!');
 
       is($arg->{oldState}, $mid_state, "old state: $mid_state");
@@ -395,7 +395,7 @@ subtest "complex state comparisons" => sub {
         [ getCakeUpdates => { sinceState => "4-5", maxChanges => 3 } ]
       ]);
 
-      my ($type, $arg) = $res->single_sentence->as_struct->@*;
+      my ($type, $arg) = $res->single_sentence->as_triple->@*;
       is($type, 'cakeUpdates', 'cake updates!!');
 
       is($arg->{oldState}, '4-5', "old state: 4-5");
@@ -418,7 +418,7 @@ subtest "complex state comparisons" => sub {
         [ getCakeUpdates => { sinceState => $mid_state, maxChanges => 5 } ]
       ]);
 
-      my ($type, $arg) = $res->single_sentence->as_struct->@*;
+      my ($type, $arg) = $res->single_sentence->as_triple->@*;
       is($type, 'cakeUpdates', 'cake updates!!');
 
       is($arg->{oldState}, $mid_state, "old state: $mid_state");

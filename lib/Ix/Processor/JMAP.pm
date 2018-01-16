@@ -260,7 +260,7 @@ sub handle_calls ($self, $ctx, $calls, $arg = {}) {
 sub process_request ($self, $ctx, $calls) {
   my $sc = $self->handle_calls($ctx, $calls);
 
-  return $sc->as_struct;
+  return $sc->as_triples;
 }
 
 1;

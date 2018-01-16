@@ -63,7 +63,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
   my ($pie1, $bake, $pie2) = $res->assert_n_paragraphs(3);
 
   cmp_deeply(
-    $jmap_tester->strip_json_types( $pie1->as_pairs ),
+    $pie1->as_stripped_pairs,
     [
       [ pieTypes => { flavors => [ qw(pumpkin apple pecan) ] } ],
     ],
@@ -123,10 +123,10 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
   ]);
 
   isa_ok(
-    $res->as_struct->[1][1]{list}[0]{id},
+    $res->as_triples->[1][1]{list}[0]{id},
     'JSON::Typist::String',
     "the returned id",
-  ) or diag(explain($res->as_struct));
+  ) or diag(explain($res->as_triples));
 
   cmp_deeply(
     $jmap_tester->strip_json_types( $res->as_pairs ),
@@ -162,7 +162,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
   ]);
 
   isa_ok(
-    $res->as_struct->[0][1]{list}[0]{id},
+    $res->as_triples->[0][1]{list}[0]{id},
     'JSON::Typist::String',
     "we return ids as strings",
   );
@@ -1047,7 +1047,7 @@ subtest "db exceptions" => sub {
       },
     },
     "duplicate usernames not possible",
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # But we can 'create' duplicate 'nobody' users (it just returns the
   # the existing one
@@ -1068,7 +1068,7 @@ subtest "db exceptions" => sub {
       },
     },
     "Trying to create a nobody user just gives us back existing one",
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Try with update
   $res = $jmap_tester->request([
@@ -1106,7 +1106,7 @@ subtest "db exceptions" => sub {
   ]);
 
   ok(my $state = $res->single_sentence->arguments->{state}, "got state")
-    or diag $res->as_stripped_struct;
+    or diag $res->as_stripped_triples;
 
   # Now attempt to change first user to 'nobody'
   $res = $jmap_tester->request([
@@ -1125,7 +1125,7 @@ subtest "db exceptions" => sub {
       newState => $state,
     }),
     "Update can catch db errors and return as if an update happened",
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 };
 
 {
@@ -1141,7 +1141,7 @@ subtest "db exceptions" => sub {
   ]);
 
   cmp_deeply(
-    $res->as_stripped_struct->[0],
+    $res->as_stripped_triples->[0],
     [
       'error',
       {
@@ -1207,7 +1207,7 @@ subtest "various string id tests" => sub {
   ]);
 
   cmp_deeply(
-    $res->as_stripped_struct,
+    $res->as_stripped_triples,
     [
       [
         'cakesSet',
@@ -1340,7 +1340,7 @@ subtest "destroyed rows don't interfere with unique constraints" => sub {
 
   my $id2 = $res->paragraph(0)->single('usersSet')->as_set->created_id('first');
   ok($id2, 'created a user with same username as destroyed user')
-    or diag explain $res->as_stripped_struct;
+    or diag explain $res->as_stripped_triples;
 
   cmp_ok($id2, 'ne', $id, "new user has a different id");
 };
@@ -1360,7 +1360,13 @@ subtest "non-ASCII data" => sub {
       my $got = $res->single_sentence('charCount')->as_stripped_pair->[1];
 
       my $data = JSON->new->utf8->decode($res->http_response->decoded_content);
-      is($data->[0][1]->{string}, $test->[0], "string round tripped (HTTP)");
+      $data = $data->{methodResponses} if ref $data eq 'HASH';
+
+      is(
+        $data->[0][1]->{string},
+        $test->[0],
+        "string round tripped (HTTP)",
+      );
 
       is($got->{string}, $test->[0], "string round tripped (JMAP::Tester)");
       is($got->{length}, $test->[1], "correct length");
@@ -1441,7 +1447,7 @@ subtest "ix_created test" => sub {
   ]);
 
   cmp_deeply(
-    $jmap_tester->strip_json_types( $res->as_stripped_struct ),
+    $jmap_tester->strip_json_types( $res->as_stripped_triples ),
     [
       [
         cakesSet => superhashof({
@@ -1455,12 +1461,12 @@ subtest "ix_created test" => sub {
         cakeToppers => superhashof({
           list => set(
             {
-              cakeId => $res->as_stripped_struct->[0][1]{created}{yum}{id},
+              cakeId => $res->as_stripped_triples->[0][1]{created}{yum}{id},
               id => ignore(),
               type => 'wedding'
             },
             {
-              cakeId => $res->as_stripped_struct->[0][1]{created}{woo}{id},
+              cakeId => $res->as_stripped_triples->[0][1]{created}{woo}{id},
               id => ignore(),
               type => 'wedding'
             },
@@ -1497,7 +1503,7 @@ subtest "ix_created test" => sub {
   ]);
 
   cmp_deeply(
-    $res->as_stripped_struct,
+    $res->as_stripped_triples,
     [
       [
         cakesSet => superhashof({
@@ -1530,7 +1536,7 @@ subtest "ix_created test" => sub {
   ]);
 
   is($res->single_sentence->arguments->{state}, 0, 'got state of 0')
-    or diag $res->as_stripped_struct;
+    or diag $res->as_stripped_triples;
 
   # Ask for updates, should be told we are in sync
   $res = $jmap_tester->request([
@@ -1587,7 +1593,7 @@ subtest "ix_created test" => sub {
   ]);
 
   cmp_deeply(
-    $res->as_stripped_struct->[0][1]{changed},
+    $res->as_stripped_triples->[0][1]{changed},
     set(map { "$_" } @created_ids),
     "getCookieUpdates with state of 0 works"
   );
@@ -1603,13 +1609,13 @@ subtest "ix_created test" => sub {
   ]);
 
   jcmp_deeply(
-    $res->as_stripped_struct->[0][1],
+    $res->as_stripped_triples->[0][1],
     {
       description => 'client cache must be reconstructed',
       type => 'cannotCalculateChanges'
     },
     "Got resync error with too low sinceState"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Complex ones too
   $res = $jmap_tester->request([
@@ -1704,7 +1710,7 @@ subtest "deleted entites in get*Updates calls" => sub {
       $res->single_sentence->arguments,
       superhashof($expect),
       $desc
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
   }
 };
 
@@ -1814,7 +1820,7 @@ subtest "optional idstr" => sub {
     $res->sentence(0)->arguments->{updated},
     { $id => undef },
     "unset external_id"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 };
 
 subtest "ix_custom_deployment_statements" => sub {
@@ -2091,7 +2097,7 @@ subtest "string normalization" => sub {
       },
     },
     "duplicate usernames not possible",
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 };
 
 subtest "client may init and/or update" => sub {
@@ -2138,7 +2144,7 @@ subtest "client may init and/or update" => sub {
     $update_set->updated,
     superhashof({ $created_id => ignore() }),
     "update with client_may_update => 1"
-  ) or diag explain $update_res->as_stripped_struct;
+  ) or diag explain $update_res->as_stripped_triples;
 
   # 'type' notUpdated
   $update_res = $jmap_tester->request([[
@@ -2157,7 +2163,7 @@ subtest "client may init and/or update" => sub {
       },
     }),
     "cannot update where client_may_update => 0"
-  ) or diag explain $update_res->as_stripped_struct;
+  ) or diag explain $update_res->as_stripped_triples;
 
 };
 
@@ -2354,7 +2360,7 @@ subtest "argument validation" => sub {
   my ($p1, $p2, $p3) = $res->assert_n_paragraphs(3);
 
   jcmp_deeply(
-    $p1->as_struct,
+    $p1->as_triples,
     [
       [ resultCount => { sentences => 0, paragraphs => 0 }, 'a' ],
     ],
@@ -2362,7 +2368,7 @@ subtest "argument validation" => sub {
   );
 
   jcmp_deeply(
-    $p2->as_struct,
+    $p2->as_triples,
     [
       [ pie   => { flavor => 'apple', bakeOrder => jnum() }, 'b' ],
       [ error => { type => 'noRecipe', requestedPie => jstr('eel') }, 'b' ],
@@ -2371,7 +2377,7 @@ subtest "argument validation" => sub {
   );
 
   jcmp_deeply(
-    $p3->as_struct,
+    $p3->as_triples,
     [
       [ resultCount => { sentences => 3, paragraphs => 2 }, 'c' ],
       [ resultCount => { sentences => 4, paragraphs => 3 }, 'c' ],
@@ -2410,7 +2416,7 @@ subtest "result references" => sub {
   ]);
 
   jcmp_deeply(
-    $res->as_struct,
+    $res->as_triples,
     [
       [ echoEcho => { args => [ 1, 2, 3 ] }, 'a' ],
       ref_error('malformed ResultReference', 'b'),
@@ -2424,7 +2430,7 @@ subtest "result references" => sub {
       [ echoEcho => { args => [ 10, 20 .. 29, 30 ] }, 'j' ],
     ],
     "simple echo response",
-  ) or diag explain($res->as_stripped_struct);
+  ) or diag explain($res->as_stripped_triples);
 };
 
 $app->_shutdown;

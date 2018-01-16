@@ -128,7 +128,7 @@ for my $k (qw(chocolate1 chocolate2 pb1 marble1 marble2 lemon1)) {
 }
 
 my $state = $res->sentence(0)->arguments->{newState};
-ok(defined($state), 'got state') or diag explain $res->as_stripped_struct;
+ok(defined($state), 'got state') or diag explain $res->as_stripped_triples;
 $state =~ s/-\d+//;
 
 {
@@ -165,7 +165,7 @@ $state =~ s/-\d+//;
       'total' => 3,
     },
     "getCakeList with sort+filter looks right"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Same but reverse sort
   $res = $jmap_tester->request([
@@ -419,7 +419,7 @@ subtest "custom condition builder" => sub {
       'total' => 1,
     },
     "getCakeList with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(1)->arguments->{list},
@@ -430,7 +430,7 @@ subtest "custom condition builder" => sub {
       }),
     ],
     "got cake back with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Fetching just the recipes should work
   $res = $jmap_tester->request([
@@ -462,7 +462,7 @@ subtest "custom condition builder" => sub {
       'total' => 1,
     },
     "getCakeList with fetchRecipes => 1 but no fetchCakes"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(1)->arguments->{list},
@@ -473,7 +473,7 @@ subtest "custom condition builder" => sub {
       }),
     ],
     "got recipe back with no fetchCakes and fetchRecipes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Provide both
   $res = $jmap_tester->request([
@@ -506,7 +506,7 @@ subtest "custom condition builder" => sub {
       'total' => 1,
     },
     "getCakeList with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(1)->arguments->{list},
@@ -517,7 +517,7 @@ subtest "custom condition builder" => sub {
       }),
     ],
     "got cake back with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(2)->arguments->{list},
@@ -528,7 +528,7 @@ subtest "custom condition builder" => sub {
       }),
     ],
     "got recipe back with fetchCakes => 1 and fetchRecipes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 }
 
 {
@@ -564,7 +564,7 @@ subtest "custom condition builder" => sub {
       },
     },
     "bad getList forms detected",
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 }
 
 {
@@ -657,7 +657,7 @@ subtest "custom condition builder" => sub {
       'total' => 2
     },
     "getCakeListUpdates looks right for added cakes"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # Now try from state-1, should show removal
   $res = $jmap_tester->request([
@@ -690,7 +690,7 @@ subtest "custom condition builder" => sub {
       'total' => 2
     },
     "getCakeListUpdates looks right for removed cake"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 }
 
 {
@@ -765,7 +765,7 @@ subtest "custom condition builder" => sub {
     [ $res->single_sentence->as_set->updated_ids() ],
     [ "$cake_id{pb1}", ],
     'upgraded a cake'
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   $state++;
 }
@@ -882,7 +882,7 @@ subtest "custom condition builder" => sub {
       'total' => 1,
     },
     "getCakeList with fetchRecipes => 1 but no fetchCakes"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(1)->arguments->{list},
@@ -894,7 +894,7 @@ subtest "custom condition builder" => sub {
       },
     ],
     "got cake back with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   # fetchOtherFooProperties
   $res = $jmap_tester->request([
@@ -927,7 +927,7 @@ subtest "custom condition builder" => sub {
       'total' => 1,
     },
     "getCakeList with fetchRecipes => 1 but no fetchCakes"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
     $res->sentence(1)->arguments->{list},
@@ -938,7 +938,7 @@ subtest "custom condition builder" => sub {
       },
     ],
     "got recipe back with no fetchCakes and fetchRecipes => 1"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 }
 
 subtest 'custom differ, and no required filters' => sub {
@@ -968,7 +968,7 @@ subtest 'custom differ, and no required filters' => sub {
         cookieIds => [],
       }),
       "No cookies match our filter yet"
-    ) or diag explain $cl_res->as_stripped_struct;
+    ) or diag explain $cl_res->as_stripped_triples;
 
     my $base_state = $cl_res->single_sentence->arguments->{state};
     ok(defined $base_state, 'got cookie state');
@@ -994,7 +994,7 @@ subtest 'custom differ, and no required filters' => sub {
       $set->created_ids,
       3,
       'created 3 cookies'
-    ) or diag explain $set_cookies->as_stripped_struct;
+    ) or diag explain $set_cookies->as_stripped_triples;
 
     $oatmeal = $set->created_id('oatmeal1') . "";
     $oreo = $set->created_id('oreo1') . "";
@@ -1023,11 +1023,11 @@ subtest 'custom differ, and no required filters' => sub {
         removed => [ ],
       }),
       "Got two cookies out of three"
-    ) or diag explain $clu_res->as_stripped_struct;
+    ) or diag explain $clu_res->as_stripped_triples;
 
     my $state = $clu_res->single_sentence->arguments->{newState};
     ok(defined $state, 'got next cookie state')
-      or diag explain $clu_res->as_stripped_struct;
+      or diag explain $clu_res->as_stripped_triples;
 
     cmp_ok($state, '>', $states[-1], 'cookie state increased');
 
@@ -1075,7 +1075,7 @@ subtest 'custom differ, and no required filters' => sub {
         ],
       }),
       "Correctly reported addition of 1 cookie and removal of another"
-    ) or diag explain $clu_res->as_stripped_struct;
+    ) or diag explain $clu_res->as_stripped_triples;
   }
 };
 
@@ -1114,7 +1114,7 @@ subtest "filters on joined tables" => sub {
         'total' => 2,
       },
       "getCakeList with filter on join with match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
 
     $res = $jmap_tester->request([
       [
@@ -1155,7 +1155,7 @@ subtest "filters on joined tables" => sub {
         'total' => 2
       },
       "getCakeListUpdates with filter on join with match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
   };
 
   subtest "filter doesn't match" => sub {
@@ -1188,7 +1188,7 @@ subtest "filters on joined tables" => sub {
         'total' => 0,
       },
       "getCakeList with filter on join no match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
 
     $res = $jmap_tester->request([
       [
@@ -1270,7 +1270,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'total' => 3,
       },
       "getCakeListUpdates with filter on join with match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
   };
 
   subtest "filter is true" => sub {
@@ -1306,7 +1306,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'total' => 0,
       },
       "getCakeListUpdates with filter on join with no match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
 
     # Now from the state where they were added, we should see removed
     $res = $jmap_tester->request([
@@ -1339,7 +1339,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'total' => 0,
       },
       "getCakeListUpdates with filter on join with no match looks right"
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
   };
 };
 
@@ -1376,7 +1376,7 @@ subtest "distinct rows only" => sub {
       total => 5,
     }),
     "no duplicates in getFooList"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 
   $res = $jmap_tester->request([
     [
@@ -1400,7 +1400,7 @@ subtest "distinct rows only" => sub {
       total => 5,
     }),
     "no duplicates in getFooListUpdates"
-  ) or diag explain $res->as_stripped_struct;
+  ) or diag explain $res->as_stripped_triples;
 };
 
 subtest "tooManyChanges" => sub {
@@ -1455,7 +1455,7 @@ subtest "tooManyChanges" => sub {
       $res->sentence(0)->arguments->{type},
       'tooManyChanges',
       'got correct error'
-    ) or diag explain $res->as_stripped_struct;
+    ) or diag explain $res->as_stripped_triples;
   };
 };
 

@@ -4,6 +4,7 @@ package Ix::App::JMAP;
 use Moose::Role;
 use experimental qw(signatures postderef);
 
+use Params::Util qw(_ARRAY0);
 use Try::Tiny;
 
 use namespace::autoclean;
@@ -11,8 +12,9 @@ use namespace::autoclean;
 with 'Ix::App';
 
 sub _core_request ($self, $ctx, $req) {
-  my $calls = try { $self->decode_json( $req->raw_body ); };
-  unless ($calls) {
+  my $payload = try { $self->decode_json( $req->raw_body ); };
+
+  unless ($payload) {
     return [
       400,
       [
@@ -22,9 +24,17 @@ sub _core_request ($self, $ctx, $req) {
     ];
   }
 
+  my $jmap_req  = _ARRAY0($payload)
+                ? { methodCalls => $payload }
+                : $payload;
+
+  my $calls = $jmap_req->{methodCalls};
   $req->env->{'ix.transaction'}{jmap}{calls} = $calls;
   my $result  = $ctx->handle_calls($calls, { no_implicit_client_ids => 1 });
-  my $json    = $self->encode_json($result->as_struct);
+  my $struct  = _ARRAY0($payload)
+              ? $result->as_triples
+              : { methodResponses => $result->as_triples };
+  my $json    = $self->encode_json($struct);
 
   return [
     200,

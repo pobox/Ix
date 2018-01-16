@@ -61,7 +61,7 @@ my $ctx = $Bakesale->get_context({
       [ pieTypes => { tasty => 1 } ],
       [ pieTypes => { tasty => 0 } ],
       [ pieTypes => { tasty => 1 }, 'a' ],
-    ], { no_implicit_client_ids => 1 })->as_struct;
+    ], { no_implicit_client_ids => 1 })->as_triples;
   };
 
   my $error = $@;
