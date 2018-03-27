@@ -161,10 +161,10 @@ my $child1 = with_child {
   ]);
 
   if (! $res->sentence(0)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
   if (! $res->sentence(1)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
 };
 
@@ -183,10 +183,10 @@ my $child2 = with_child {
   ]);
 
   if (! $res->sentence(0)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
   if (! $res->sentence(1)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
 };
 
@@ -206,10 +206,10 @@ my $child3 = with_child {
   ]);
 
   if (! $res->sentence(0)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
   if (! $res->sentence(1)->arguments->{created}) {
-    die "Bad response: " . Dumper($res->as_stripped_struct);
+    die "Bad response: " . Dumper($res->as_stripped_triples);
   }
 };
 
@@ -253,7 +253,7 @@ is($new_state, $state + 2, "state bumped twice");
 
 my @changed = $res->sentence(0)->arguments->{changed}->@*;
 is (@changed, 2, 'two cookies created')
-  or diag explain $res->as_stripped_struct;
+  or diag explain $res->as_stripped_triples;
 
 # This should give us one cookie, state increased by 1
 $res = $jmap_tester->request([
@@ -267,6 +267,8 @@ is($new_state, $state + 2, "state bumped twice");
 
 @changed = $res->sentence(0)->arguments->{changed}->@*;
 is (@changed, 1, 'one cookie created')
-  or diag explain $res->as_stripped_struct;
+  or diag explain $res->as_stripped_triples;
+
+$app->_shutdown;
 
 done_testing;

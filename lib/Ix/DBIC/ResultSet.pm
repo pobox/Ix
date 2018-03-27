@@ -899,9 +899,9 @@ sub get_collection_lock ($self, $ctx) {
   } catch {
     # If the above failed, it was most likely due to a lock timeout
     # (if one was configured).
-    return $ctx->error('tryAgain' => {
+    $ctx->error('tryAgain' => {
       description => "blocked by another client",
-    });
+    })->throw;
   };
 }
 

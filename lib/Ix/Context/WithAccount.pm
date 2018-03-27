@@ -9,6 +9,8 @@ use Ix::Result;
 
 use Ix::AccountState;
 
+use Try::Tiny;
+
 use namespace::autoclean;
 
 requires 'account_type';
@@ -81,44 +83,59 @@ sub _build_state ($self) {
 # internally that may try to bump state (generally, anything that may lead
 # to a nested ix_set).
 sub txn_do ($self, $code) {
-  if (
-       $self->_txn_level == 0
-    && $self->_has_state
-  ) {
-    # We should *NOT* have gotten any state information before starting
-    # a brand new transaction tree. If so, something is wrong.
-    require Carp;
-    Carp::confess("We already have state before starting a transaction?!");
-  }
+  return $self->schema->txn_do(sub {
+    if (
+         $self->_txn_level == 0
+      && $self->_has_state
+    ) {
+      # We should *NOT* have gotten any state information before starting
+      # a brand new transaction tree. If so, something is wrong.
+      require Carp;
+      Carp::confess("We already have state before starting a transaction?!");
+    }
 
-  # Start of a tree? Localize state so it goes away when we're done
-  local $self->{state} = $self->_build_state if $self->_txn_level == 0;
+    # Start of a tree? Localize state so it goes away when we're done
+    local $self->{state} = $self->_build_state if $self->_txn_level == 0;
 
-  my $state = $self->state;
+    my $state = $self->state;
 
-  my $inner = { $state->_pending_states->%* };
-  my @rv;
+    my @rv;
+    my $inner = { $state->_pending_states->%* };
 
-  {
-    # Localize txn level and pending states and  for next ix_* calls that
-    # may happen
-    local $self->{_txn_level} = $self->_txn_level + 1;
-    local $state->{_pending_states} = $inner;
+    {
+      # Localize txn level and pending states and  for next ix_* calls that
+      # may happen
+      local $self->{_txn_level} = $self->_txn_level + 1;
+      local $state->{_pending_states} = $inner;
 
-    @rv = $self->schema->txn_do($code);
-  }
+      @rv = $code->();
+    }
 
-  # Copy any actually bumped states up
-  for my $k (keys %$inner) {
-    $state->_pending_states->{$k} = $inner->{$k};
-  }
+    # Copy any actually bumped states up
+    for my $k (keys %$inner) {
+      $state->_pending_states->{$k} = $inner->{$k};
+    }
 
-  # Are we the start of this tree? Commit the state changes if any
-  if ($self->_txn_level == 0) {
-    $state->_save_states;
-  }
+    # Are we the start of this tree? Commit the state changes if any
+    if ($self->_txn_level == 0) {
+      try {
+        $state->_save_states;
+      } catch {
+        my $error = $_;
 
-  return @rv;
+        if ($error =~ /unique.*states_pkey/i) {
+          $self->error('tryAgain' => {
+            description => "blocked by another client",
+          })->throw;
+        }
+
+        # What even happened?
+        die $error;
+      };
+    }
+
+    return @rv;
+  });
 }
 
 sub process_request ($self, $calls) {
