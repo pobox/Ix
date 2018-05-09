@@ -116,7 +116,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
       $ctx,
       $arg,
       [
-        $ctx->result($rclass->ix_type_key => {
+        $ctx->result($rclass->ix_type_key . "/get" => {
           state => $rclass->ix_state_string($ctx->state),
           list  => \@rows,
           notFound => (@not_found ? \@not_found : undef),
@@ -147,9 +147,9 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       return $error;
     }
 
-    my $type_key = $rclass->ix_type_key;
+    my $type_key = $rclass->ix_type_key_singular;
     my $schema   = $ctx->schema;
-    my $res_type = $rclass->ix_type_key_singular . "Updates";
+    my $res_type = "$type_key/changes";
 
     my $statecmp = $rclass->ix_compare_state($since, $ctx->state);
 
@@ -997,7 +997,7 @@ sub ix_set ($self, $ctx, $arg = {}) {
     }
 
     my $ret = [ Ix::Result::FoosSet->new({
-      result_type => "${type_key}Set",
+      result_type => "$type_key/set",
       old_state => $curr_state,
       new_state => $rclass->ix_state_string($state),
       %result,
@@ -1063,13 +1063,13 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
 
     my $hms = "" . $ctx->state->highest_modseq_for($key);
 
-    my @res = $ctx->result("${key1}List" => {
+    my @res = $ctx->result("$key/query" => {
       filter       => $orig_filter,
       sort         => $orig_sort,
       state        => $hms,
       total        => $total,
       position     => $arg->{position} // 0,
-      "${key1}Ids" => [ map {; "" . $_->{id} } @items ],
+      "${key1}Ids" => [ map {; "" . $_->{id} } @items ],  # XXX -- michael, 2018-05-09
 
       canCalculateUpdates => \1,
     });
@@ -1167,7 +1167,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     if ($arg->{sinceState} == $hms) {
       # Nothing changed!  But we still promise to return the total,
       # unfortunately, so we get it. -- rjbs, 2016-04-13
-      return $ctx->result("${key1}ListUpdates" => {
+      return $ctx->result("$key/queryChanges" => {
         filter => $orig_filter,
         sort   => $orig_sort,
         oldState => "$since_state",
@@ -1282,7 +1282,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       $i++ unless $is_removed;
     }
 
-    return $ctx->result("${key1}ListUpdates" => {
+    return $ctx->result("$key1/queryChanges" => {
       filter => $orig_filter,
       sort   => $orig_sort,
       oldState => "" . $since_state,

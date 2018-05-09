@@ -55,26 +55,25 @@ has _dbic_handlers => (
         }
       }
 
-      my $key  = $rclass->ix_type_key;
-      my $key1 = $rclass->ix_type_key_singular;
+      my $key = $rclass->ix_type_key;
 
-      $handler{"get\u$key"} = sub ($self, $ctx, $arg = {}) {
+      $handler{"$key/get"} = sub ($self, $ctx, $arg = {}) {
         $ctx->schema->resultset($moniker)->ix_get($ctx, $arg);
       };
 
-      $handler{"get\u${key1}Updates"} = sub ($self, $ctx, $arg = {}) {
+      $handler{"$key/changes"} = sub ($self, $ctx, $arg = {}) {
         $ctx->schema->resultset($moniker)->ix_get_updates($ctx, $arg);
       };
 
-      $handler{"set\u$key"} = sub ($self, $ctx, $arg) {
+      $handler{"$key/set"} = sub ($self, $ctx, $arg) {
         $ctx->schema->resultset($moniker)->ix_set($ctx, $arg);
       };
 
       if ($rclass->ix_get_list_enabled) {
-        $handler{"get\u${key1}List"} = sub ($self, $ctx, $arg) {
+        $handler{"$key/query"} = sub ($self, $ctx, $arg) {
           $ctx->schema->resultset($moniker)->ix_get_list($ctx, $arg);
         };
-        $handler{"get\u${key1}ListUpdates"} = sub ($self, $ctx, $arg) {
+        $handler{"$key/queryChanges"} = sub ($self, $ctx, $arg) {
           $ctx->schema->resultset($moniker)->ix_get_list_updates($ctx, $arg);
         };
       }

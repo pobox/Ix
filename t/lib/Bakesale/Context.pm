@@ -49,7 +49,7 @@ package Bakesale::Context {;
 
   sub may_call ($self, $method, $arg) {
     # We don't have the tech to create space cookies
-    if ($method eq 'setCookies' && $arg->{outofthisworld}) {
+    if ($method eq 'Cookie/set' && $arg->{outofthisworld}) {
       return 0;
     }
 

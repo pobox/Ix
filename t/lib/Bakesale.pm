@@ -131,19 +131,19 @@ package Bakesale::Test {
     ]);
 
     $schema->resultset('State')->search({
-      accountId => $a1, type => 'cookies',
+      accountId => $a1, type => 'Cookie',
     })->update({ highestModSeq => 8 });
 
     $schema->resultset('State')->search({
-      accountId => $a2, type => 'cookies',
+      accountId => $a2, type => 'Cookie',
     })->update({ highestModSeq => 1 });
 
     $schema->resultset('State')->search({
-      accountId => $a1, type => 'users',
+      accountId => $a1, type => 'User',
     })->update({ highestModSeq => 1 });
 
     $schema->resultset('State')->search({
-      accountId => $a1, type => 'users',
+      accountId => $a1, type => 'User',
     })->update({ highestModSeq => 1 });
 
     return {

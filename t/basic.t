@@ -90,7 +90,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
 
 {
   my $res = $jmap_tester->request([
-    [ getCookies => {
+    [ 'Cookie/get' => {
         ids   => [ 1 ],
         tasty => 1,
         kakes => \1,
@@ -108,13 +108,13 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
         },
       ],
     ],
-    "you can't just pass random new args to getFoos",
+    "you can't just pass random new args to Foo/get",
   );
 }
 
 {
   my $res = $jmap_tester->request([
-    [ getCookieUpdates => {
+    [ 'Cookie/changes' => {
         sinceState   => 2,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type) ],
@@ -131,9 +131,9 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
   cmp_deeply(
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
-      [ cookieUpdates => ignore() ],
+      [ 'Cookie/changes' => ignore() ],
       [
-        cookies => {
+        'Cookie/get' => {
           notFound => undef,
           state => 8,
           list  => [
@@ -144,7 +144,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
         },
       ],
     ],
-    "a getFoos call backed by the database",
+    "a Foo/get call backed by the database",
   );
 }
 
@@ -154,7 +154,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
 
   my $res = $jmap_tester->request([
     [
-      getCookies => {
+      'Cookie/get' => {
         ids        => [ $account{cookies}{4}, $does_not_exist ],
         properties => [ qw(type) ]
       }
@@ -171,7 +171,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookies => {
+        'Cookie/get' => {
           notFound => [ $does_not_exist ],
           state => 8,
           list  => [
@@ -180,13 +180,13 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
         },
       ],
     ],
-    "a getFoos call with notFound entries",
+    "a Foo/get call with notFound entries",
   );
 }
 
 {
   my $res = $jmap_tester->request([
-    [ getCakes => { } ],
+    [ 'Cake/get' => { } ],
   ]);
 
   cmp_deeply(
@@ -199,13 +199,13 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
         }
       ]
     ],
-    "a getCakes call without 'ids' argument",
+    "a Cake/get call without 'ids' argument",
   );
 }
 
 {
   my $res = $jmap_tester->request([
-    [ setCookies => { ifInState => 3, destroy => [ 4 ] } ],
+    [ 'Cookie/set' => { ifInState => 3, destroy => [ 4 ] } ],
   ]);
 
   cmp_deeply(
@@ -213,7 +213,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
     [
       [ error => { type => 'stateMismatch' } ],
     ],
-    "setCookies respects ifInState",
+    "Cookie/set respects ifInState",
   );
 }
 
@@ -222,7 +222,7 @@ my @created_ids;
 {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         ifInState => 8,
         create    => {
           yellow => { type => 'shortbread', baked_at => undef },
@@ -243,7 +243,7 @@ my @created_ids;
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => 8,
           newState => 9,
 
@@ -279,7 +279,7 @@ my @created_ids;
         }),
       ],
     ],
-    "we can create cookies with setCookies",
+    "we can create cookies with Cookie/set",
   ) or diag(explain($jmap_tester->strip_json_types( $res->as_pairs )));
 
   my $set = $res->single_sentence->as_set;
@@ -300,7 +300,7 @@ my @created_ids;
   # Check ix_update_check
   $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         ifInState => 9,
         update => {
           $account{cookies}{1} => { type => 'tim-tam' },
@@ -314,7 +314,7 @@ my @created_ids;
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           notUpdated => {
             $account{cookies}{1} => superhashof({
               'type' => 'partyFoul',
@@ -334,14 +334,14 @@ my @created_ids;
 
 {
   my $res = $jmap_tester->request([
-    [ getCookieUpdates => { sinceState => 8 } ],
+    [ 'Cookie/changes' => { sinceState => 8 } ],
   ]);
 
   cmp_deeply(
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookieUpdates => {
+        'Cookie/changes' => {
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -357,7 +357,7 @@ my @created_ids;
 subtest "invalid sinceState" => sub {
   subtest "too high" => sub {
     my $res = $jmap_tester->request([
-      [ getCookieUpdates => { sinceState => 999 } ],
+      [ 'Cookie/changes' => { sinceState => 999 } ],
     ]);
 
     cmp_deeply(
@@ -369,7 +369,7 @@ subtest "invalid sinceState" => sub {
 
   subtest "too low" => sub {
     my $res = $jmap_tester->request([
-      [ getCookieUpdates => { sinceState => -1 } ],
+      [ 'Cookie/changes' => { sinceState => -1 } ],
     ]);
 
     cmp_deeply(
@@ -382,11 +382,11 @@ subtest "invalid sinceState" => sub {
 
 {
   my $get_res = $jmap_tester->request([
-    [ getCookies => { ids => [ $account{cookies}{1}, @created_ids ] } ],
+    [ 'Cookie/get' => { ids => [ $account{cookies}{1}, @created_ids ] } ],
   ]);
 
   my $res = $jmap_tester->request([
-    [ getCookieUpdates => { sinceState => 8, fetchRecords => 1 } ],
+    [ 'Cookie/changes' => { sinceState => 8, fetchRecords => 1 } ],
   ]);
 
   my $get_payloads = $jmap_tester->strip_json_types(
@@ -397,7 +397,7 @@ subtest "invalid sinceState" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookieUpdates => {
+        'Cookie/changes' => {
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -406,7 +406,7 @@ subtest "invalid sinceState" => sub {
         },
       ],
       [
-        cookies => {
+        'Cookie/get' => {
           $get_payloads->%*,
           list => bag( $get_payloads->{list}->@* ),
         },
@@ -419,7 +419,7 @@ subtest "invalid sinceState" => sub {
 {
   my $res = $jmap_tester->request([
     [
-      setCakes => {
+      'Cake/set' => {
         ifInState => '0-0',
         create    => {
           yum => { type => 'layered', layer_count => 4, recipeId => $account{recipes}{1} },
@@ -433,7 +433,7 @@ subtest "invalid sinceState" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cakesSet => superhashof({
+        'Cake/set' => superhashof({
           created => {
             yum => superhashof({ baked_at => ignore() }),
           },
@@ -453,7 +453,7 @@ subtest "invalid sinceState" => sub {
 subtest "passing in a boolean" => sub {
   my $res = $jmap_tester->request([
     [
-      setCakeRecipes => {
+      'CakeRecipe/set' => {
         create => {
           boat => {
             type          => 'cake boat',
@@ -469,7 +469,7 @@ subtest "passing in a boolean" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cakeRecipesSet => superhashof({
+        'CakeRecipe/set' => superhashof({
           created => {
             boat => { id => ignore(), sku => re(qr/\A[0-9]{5}\z/), },
           }
@@ -482,14 +482,14 @@ subtest "passing in a boolean" => sub {
   my $id = $res->single_sentence->as_set->created_id('boat');
 
   my $get = $jmap_tester->request([
-    [ getCakeRecipes => { ids => [ "$id" ] } ]
+    [ 'CakeRecipe/get' => { ids => [ "$id" ] } ]
   ]);
 
   cmp_deeply(
     $jmap_tester->strip_json_types( $get->as_pairs ),
     [
       [
-        cakeRecipes => superhashof({
+        'CakeRecipe/get' => superhashof({
           list => [ superhashof({ id => "$id", is_delicious => bool(0) }) ],
         }),
       ],
@@ -500,7 +500,7 @@ subtest "passing in a boolean" => sub {
   # Can't use something that looks like a boolean
   $res = $jmap_tester->request([
     [
-      setCakeRecipes => {
+      'CakeRecipe/set' => {
         create => {
           boat => {
             type          => 'cake boat',
@@ -513,7 +513,7 @@ subtest "passing in a boolean" => sub {
   ]);
 
   my $err = $res->paragraph(0)
-                ->single('cakeRecipesSet')
+                ->single('CakeRecipe/set')
                 ->as_set
                 ->create_errors;
 
@@ -534,14 +534,14 @@ subtest "passing in a boolean" => sub {
 subtest "make a recipe and a cake in one transaction" => sub {
   my $res = $jmap_tester->request([
     [
-      setCakeRecipes => {
+      'CakeRecipe/set' => {
         create => {
           pav => { type => 'pavlova', avg_review => 50 }
         },
       },
     ],
     [
-      setCakes => {
+      'Cake/set' => {
         create    => {
           magic => { type => 'eggy', layer_count => 2, recipeId => '#pav' },
         }
@@ -552,7 +552,7 @@ subtest "make a recipe and a cake in one transaction" => sub {
   cmp_deeply(
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
-      [ cakeRecipesSet => superhashof({
+      [ 'CakeRecipe/set' => superhashof({
           created => {
             pav => {
               id => ignore(),
@@ -561,7 +561,7 @@ subtest "make a recipe and a cake in one transaction" => sub {
             },
           }
       }) ],
-      [ cakesSet       => superhashof({}) ],
+      [ 'Cake/set'       => superhashof({}) ],
     ],
     "we can bake cakes with recipes in one go",
   ) or note(explain($res->as_pairs));
@@ -573,13 +573,13 @@ subtest "subroutine defaults for lazy computation" => sub {
   {
     my $res = $jmap_tester->request([
       [
-        setCakeRecipes => {
+        'CakeRecipe/set' => {
           create => { pac => { type => 'pat-a-cake', avg_review => 81 } },
         },
       ],
     ]);
 
-    my $sku = $res->single_sentence('cakeRecipesSet')
+    my $sku = $res->single_sentence('CakeRecipe/set')
                   ->as_set
                   ->created->{pac}{sku};
 
@@ -594,7 +594,7 @@ subtest "subroutine defaults for lazy computation" => sub {
   {
     my $res = $jmap_tester->request([
       [
-        setCakeRecipes => {
+        'CakeRecipe/set' => {
           create => {
             bug => { type => 'insect', avg_review => 8, sku => 'BUG001' }
           },
@@ -602,7 +602,7 @@ subtest "subroutine defaults for lazy computation" => sub {
       ],
     ]);
 
-    my $bug = $res->single_sentence('cakeRecipesSet')->as_set->created->{bug};
+    my $bug = $res->single_sentence('CakeRecipe/set')->as_set->created->{bug};
     ok( ! exists $bug->{sku}, "non-default sku, so not returned in set");
 
     is(
@@ -612,10 +612,10 @@ subtest "subroutine defaults for lazy computation" => sub {
     );
 
     my $bug_get_res = $jmap_tester->request([
-      [ getCakeRecipes => { ids => [ $bug->{id} ] } ]
+      [ 'CakeRecipe/get' => { ids => [ $bug->{id} ] } ]
     ]);
 
-    my $bug_get = $bug_get_res->single_sentence('cakeRecipes')
+    my $bug_get = $bug_get_res->single_sentence('CakeRecipe/get')
                               ->arguments
                               ->{list}[0];
 
@@ -626,7 +626,7 @@ subtest "subroutine defaults for lazy computation" => sub {
 {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         ifInState => 9,
         destroy   => [ 3 ],
         create    => { blue => {} },
@@ -639,7 +639,7 @@ subtest "subroutine defaults for lazy computation" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => 9,
           newState => 9,
 
@@ -656,7 +656,7 @@ subtest "subroutine defaults for lazy computation" => sub {
 {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'dough', baked_at => undef } },
       },
     ],
@@ -666,7 +666,7 @@ subtest "subroutine defaults for lazy computation" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           created => { raw => { id => re(qr/\S/), expires_at => ignore(), delicious => ignore(), external_id => ignore(), batch => ignore(), } },
         }),
       ],
@@ -677,8 +677,8 @@ subtest "subroutine defaults for lazy computation" => sub {
 
 {
   my $res = $jmap_tester->request([
-    [ setCookies => { create => { oatmeal => { type => 'oatmeal' } } } ],
-    [ setCookies => { create => { mealoat => { type => 'oatmeal' } } } ],
+    [ 'Cookie/set' => { create => { oatmeal => { type => 'oatmeal' } } } ],
+    [ 'Cookie/set' => { create => { mealoat => { type => 'oatmeal' } } } ],
   ]);
 
   my %state;
@@ -689,13 +689,13 @@ subtest "subroutine defaults for lazy computation" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => code(sub { $state{old} = $_[0]; 1 } ),
           newState => code(sub { $state{ s1} = $_[0]; 1 } ),
         }),
       ],
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => code(sub { $state{ s1} eq $_[0] }),
           newState => code(sub { $state{ s2} = $_[0]; 1 } ),
         }),
@@ -709,26 +709,26 @@ subtest "subroutine defaults for lazy computation" => sub {
 
 subtest "no-update update" => sub {
   my $res1 = $jmap_tester->request([
-    [ setCookies => { create => { twisty => { type => 'oreo' } } } ],
+    [ 'Cookie/set' => { create => { twisty => { type => 'oreo' } } } ],
   ]);
 
-  my $set1 = $res1->single_sentence('cookiesSet')->as_set;
+  my $set1 = $res1->single_sentence('Cookie/set')->as_set;
   my $id = $set1->created_id('twisty');
 
   my $res2 = $jmap_tester->request([
-    [ setCookies => { update => { "$id" => { type => 'hydrox' } } } ],
+    [ 'Cookie/set' => { update => { "$id" => { type => 'hydrox' } } } ],
   ]);
 
-  my $set2 = $res2->single_sentence('cookiesSet')->as_set;
+  my $set2 = $res2->single_sentence('Cookie/set')->as_set;
 
   is(  $set2->old_state, $set1->new_state, "1st update starts at create state");
   isnt($set2->new_state, $set1->new_state, "1st update ends at new state");
 
   my $res3 = $jmap_tester->request([
-    [ setCookies => { update => { "$id" => { type => 'hydrox' } } } ],
+    [ 'Cookie/set' => { update => { "$id" => { type => 'hydrox' } } } ],
   ]);
 
-  my $set3 = $res3->single_sentence('cookiesSet')->as_set;
+  my $set3 = $res3->single_sentence('Cookie/set')->as_set;
 
   is(  $set3->old_state, $set2->new_state, "2nd update starts at 1st update");
   is(  $set3->new_state, $set2->new_state, "2nd update does not change state");
@@ -736,52 +736,54 @@ subtest "no-update update" => sub {
 
 subtest "delete the deleted" => sub {
   my $res1 = $jmap_tester->request([
-    [ setCookies => { create => { doomed => { type => 'pistachio' } } } ],
+    [ 'Cookie/set' => { create => { doomed => { type => 'pistachio' } } } ],
   ]);
 
-  my $set1 = $res1->single_sentence('cookiesSet')->as_set;
+  my $set1 = $res1->single_sentence('Cookie/set')->as_set;
   my $id = $set1->created_id('doomed');
 
   my $res2 = $jmap_tester->request([
-    [ setCookies => { destroy => [ "$id" ] } ],
+    [ 'Cookie/set' => { destroy => [ "$id" ] } ],
   ]);
 
-  my $set2 = $res2->single_sentence('cookiesSet')->as_set;
+  my $set2 = $res2->single_sentence('Cookie/set')->as_set;
 
   is_deeply([ $set2->destroyed_ids ], [ $id ], "we destroy the item");
 
   my $res3 = $jmap_tester->request([
-    [ setCookies => { destroy => [ "$id" ] } ],
+    [ 'Cookie/set' => { destroy => [ "$id" ] } ],
   ]);
 
-  my $set3 = $res3->single_sentence('cookiesSet')->as_set;
+  my $set3 = $res3->single_sentence('Cookie/set')->as_set;
 
   is_deeply([ $set3->destroyed_ids ], [ ], "we destroy nothing");
   is_deeply([ $set3->not_destroyed_ids ], [ $id ], "...especially not $id");
 };
 
 subtest "duplicated creation ids" => sub {
+  # TODO -- michael, 2018-05-09
+  local $TODO = 'revisit with bakrefs';
   my $res = $jmap_tester->request([
     [
-      setCakeRecipes => { create => {
+      'CakeRecipe/set' => { create => {
         yummy => { type => 'yummykake', avg_review => 80 },
         tasty => { type => 'tastykake', avg_review => 80 },
       } }
     ],
     [
-      setCakes => { create    => {
+      'Cake/set' => { create    => {
         yc1   => { type => 'y1', layer_count => 1, recipeId => '#yummy' },
         tc    => { type => 't1', layer_count => 2, recipeId => '#tasty' },
       } },
     ],
     [
-      setCakeRecipes => { create => {
+      'CakeRecipe/set' => { create => {
         yummy => { type => 'raspberry', avg_review => 82 },
         gross => { type => 'slugflour', avg_review => 12 },
       } }
     ],
     [
-      setCakes => { create    => {
+      'Cake/set' => { create    => {
         yc2  => { type => 'y2', layer_count => 3, recipeId => '#yummy' },
         gc   => { type => 'g1', layer_count => 4, recipeId => '#gross' },
       } },
@@ -792,7 +794,7 @@ subtest "duplicated creation ids" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cakeRecipesSet => superhashof({
+        'CakeRecipe/set' => superhashof({
           notCreated => {},
           created => {
             yummy => superhashof({}),
@@ -801,18 +803,18 @@ subtest "duplicated creation ids" => sub {
         })
       ],
       [
-        cakesSet       => superhashof({
+        'Cake/set'       => superhashof({
           notCreated => {},
           created => { yc1 => superhashof({}), tc => superhashof({}) },
         })
       ],
       [
-        cakeRecipesSet => superhashof({
+        'CakeRecipe/set' => superhashof({
           created => { gross => superhashof({}), yummy => superhashof({}) },
         }),
       ],
       [
-        cakesSet       => superhashof({
+        'Cake/set'       => superhashof({
           notCreated => { yc2 => superhashof({ type => 'duplicateCreationId' }) },
           created => { gc => superhashof({}) },
         }),
@@ -829,7 +831,7 @@ subtest "timestamptz field validations" => sub {
 
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create    => {
           yellow => { type => 'yellow' }, # default baked_at
           gold   => { type => 'gold', baked_at => undef }, # null baked_at
@@ -851,7 +853,7 @@ subtest "timestamptz field validations" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => ignore(),
           newState => code(sub { $state = $_[0]; 1}),
           created => {
@@ -885,7 +887,7 @@ subtest "timestamptz field validations" => sub {
   # Verify
   $res = $jmap_tester->request([
     [
-      getCookieUpdates => {
+      'Cookie/changes' => {
         sinceState => $state - 1,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type baked_at expires_at) ],
@@ -898,9 +900,9 @@ subtest "timestamptz field validations" => sub {
   cmp_deeply(
     $data,
     [
-      [ cookieUpdates => ignore() ],
+      [ 'Cookie/changes' => ignore() ],
       [
-        cookies => {
+        'Cookie/get' => {
           notFound => undef,
           state => $state,
           list  => bag(
@@ -923,7 +925,7 @@ subtest "timestamptz field validations" => sub {
 
   $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         update => {
           $c_to_id{yellow} => { type => 'tim tam' }, # Leave baked_at
           $c_to_id{gold}   => { baked_at => '2016-01-01T12:34:56Z' },
@@ -940,7 +942,7 @@ subtest "timestamptz field validations" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => $state,
           newState => $state + 1,
           updated => {
@@ -970,7 +972,7 @@ subtest "timestamptz field validations" => sub {
   # Verify (still using much older state so we can see white in the list)
   $res = $jmap_tester->request([
     [
-      getCookieUpdates => {
+      'Cookie/changes' => {
         sinceState => $state - 2,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type baked_at expires_at) ],
@@ -983,9 +985,9 @@ subtest "timestamptz field validations" => sub {
   cmp_deeply(
     $data,
     [
-      [ cookieUpdates => ignore() ],
+      [ 'Cookie/changes' => ignore() ],
       [
-        cookies => {
+        'Cookie/get' => {
           notFound => undef,
           state => $state,
           list  => set(
@@ -1006,7 +1008,7 @@ subtest "timestamptz field validations" => sub {
 subtest "db exceptions" => sub {
   # Make sure ix_create_error/update_error/destroy_error fire and work
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first       => { username => 'first', },
         second      => { username => 'second', },
@@ -1015,7 +1017,7 @@ subtest "db exceptions" => sub {
     } ],
   ]);
 
-  my $created = $res->paragraph(0)->single('usersSet')->as_set;
+  my $created = $res->paragraph(0)->single('User/set')->as_set;
   my $first_id = $created->created_id('first');
   my $second_id = $created->created_id('second');
   my $nobody_id = $created->created_id('nobody');
@@ -1026,7 +1028,7 @@ subtest "db exceptions" => sub {
 
   # Now try to create duplicate user first
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first       => { username => 'first', },
       },
@@ -1034,7 +1036,7 @@ subtest "db exceptions" => sub {
   ]);
 
   my $err = $res->paragraph(0)
-                ->single('usersSet')
+                ->single('User/set')
                 ->as_set
                 ->create_errors;
 
@@ -1052,7 +1054,7 @@ subtest "db exceptions" => sub {
   # But we can 'create' duplicate 'nobody' users (it just returns the
   # the existing one
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first => { username => 'nobody', status => 'whatever' },
       },
@@ -1060,7 +1062,7 @@ subtest "db exceptions" => sub {
   ]);
 
   jcmp_deeply(
-    $res->paragraph(0)->single('usersSet')->as_set->created,
+    $res->paragraph(0)->single('User/set')->as_set->created,
     {
       first => {
         id       => $nobody_id,
@@ -1072,7 +1074,7 @@ subtest "db exceptions" => sub {
 
   # Try with update
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       update => {
         $first_id => { username => 'second', },
       },
@@ -1080,7 +1082,7 @@ subtest "db exceptions" => sub {
   ]);
 
   $err = $res->paragraph(0)
-                ->single('usersSet')
+                ->single('User/set')
                 ->as_set
                 ->update_errors;
 
@@ -1102,7 +1104,7 @@ subtest "db exceptions" => sub {
 
   # First, get state
   $res = $jmap_tester->request([
-    [ getUsers => { ids => [ $first_id ] }, ],
+    [ 'User/get' => { ids => [ $first_id ] }, ],
   ]);
 
   ok(my $state = $res->single_sentence->arguments->{state}, "got state")
@@ -1110,7 +1112,7 @@ subtest "db exceptions" => sub {
 
   # Now attempt to change first user to 'nobody'
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       update => {
         $first_id => { username => 'nobody', },
       },
@@ -1132,7 +1134,7 @@ subtest "db exceptions" => sub {
   # Make sure ix_set_check works
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => {
           actually_a_cake => { type => 'cake' },
         },
@@ -1159,7 +1161,7 @@ subtest "supplied created values changed" => sub {
   # scenes during create, we need to supply the new value to the user
   # so that their data is in sync with ours
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         # status will remain active, we should not get status back
         active       => { username => 'active', status => 'active' },
@@ -1171,7 +1173,7 @@ subtest "supplied created values changed" => sub {
   ]);
 
   my $created = $jmap_tester->strip_json_types(
-    $res->paragraph(0)->single('usersSet')->as_set->created
+    $res->paragraph(0)->single('User/set')->as_set->created
   );
 
   cmp_deeply(
@@ -1189,7 +1191,7 @@ subtest "various string id tests" => sub {
   # are integers only. Make sure junk string ids don't throw database
   # exceptions
   my $res = $jmap_tester->request([
-    [ setCakes => {
+    [ 'Cake/set' => {
       create => {
         "new" => { type => 'layered', layer_count => 4, recipeId => "cat", },
       },
@@ -1199,10 +1201,10 @@ subtest "various string id tests" => sub {
       destroy => [ 'to_destroy' ],
     }, 'a', ],
     [
-      getCakes => { ids => [ 'bad' ] }, 'b',
+      'Cake/get' => { ids => [ 'bad' ] }, 'b',
     ],
     [
-      getCookieUpdates => { sinceState => 'bad' }, 'c',
+      'Cookie/changes' => { sinceState => 'bad' }, 'c',
     ],
   ]);
 
@@ -1210,7 +1212,7 @@ subtest "various string id tests" => sub {
     $res->as_stripped_triples,
     [
       [
-        'cakesSet',
+        'Cake/set',
         {
           'created' => {},
           'destroyed' => [],
@@ -1242,7 +1244,7 @@ subtest "various string id tests" => sub {
         'a',
       ],
       [
-        'cakes',
+        'Cake/get',
         {
           'list' => [],
           'notFound' => [
@@ -1269,7 +1271,7 @@ subtest "virtual properties in create" => sub {
   # If a class has virtual properties, they should come back in
   # the create call. For now this is up to subclasses to manage
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         virtualprops => { username => 'virtualprops', status => 'active' },
       },
@@ -1277,7 +1279,7 @@ subtest "virtual properties in create" => sub {
   ]);
 
   my $created = $jmap_tester->strip_json_types(
-    $res->paragraph(0)->single('usersSet')->as_set->created
+    $res->paragraph(0)->single('User/set')->as_set->created
   );
 
   cmp_deeply(
@@ -1290,55 +1292,55 @@ subtest "virtual properties in create" => sub {
 
   # Also comes back in gets
   $res = $jmap_tester->request([
-    [ getUsers => { ids => [ $created->{virtualprops}->{id} ] } ],
+    [ 'User/get' => { ids => [ $created->{virtualprops}->{id} ] } ],
   ]);
 
   my $got = $jmap_tester->strip_json_types(
-    $res->paragraph(0)->single('users')->as_set->arguments->{list}->[0]
+    $res->paragraph(0)->single('User/get')->as_set->arguments->{list}->[0]
   );
 
   cmp_deeply(
     $got,
     superhashof({ ranking => 7 }),
-    "got ranking back from getUsers"
+    "got ranking back from User/get"
   );
 };
 
 subtest "destroyed rows don't interfere with unique constraints" => sub {
   # Make sure destroyed rows don't interfere with unique constraints
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first => { username => 'a new user', },
       },
     } ],
   ]);
 
-  my $id = $res->paragraph(0)->single('usersSet')->as_set->created_id('first');
+  my $id = $res->paragraph(0)->single('User/set')->as_set->created_id('first');
   ok($id, 'created a user');
 
   # Destroy that user
   $res = $jmap_tester->request([
-     [ setUsers => {
+     [ 'User/set' => {
        destroy => [ $id ],
      } ],
   ]);
   is(
-    ($res->single_sentence('usersSet')->as_set->destroyed_ids)[0],
+    ($res->single_sentence('User/set')->as_set->destroyed_ids)[0],
     $id,
     'user destroyed'
   );
 
   # Now create a new user with same username
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first => { username => 'a new user', },
       },
     } ],
   ]);
 
-  my $id2 = $res->paragraph(0)->single('usersSet')->as_set->created_id('first');
+  my $id2 = $res->paragraph(0)->single('User/set')->as_set->created_id('first');
   ok($id2, 'created a user with same username as destroyed user')
     or diag explain $res->as_stripped_triples;
 
@@ -1382,7 +1384,7 @@ subtest "non-ASCII data" => sub {
 
     my $res = $jmap_tester->request([
       [
-        setCakeRecipes => {
+        'CakeRecipe/set' => {
           create => {
             yum  => {
               type          => $shoefly,
@@ -1405,8 +1407,8 @@ subtest "non-ASCII data" => sub {
       my $id  = $set->created_id('taro');
       pass("created taro cake! id: $id");
       ok(! exists $set->created->{taro}{type}, "type used unaltered");
-      my $cake = $jmap_tester->request([[ getCakeRecipes => { ids => [ $id ] } ]]);
-      my $type = $cake->single_sentence('cakeRecipes')->arguments->{list}[0]{type};
+      my $cake = $jmap_tester->request([[ 'CakeRecipe/get' => { ids => [ $id ] } ]]);
+      my $type = $cake->single_sentence('CakeRecipe/get')->arguments->{list}[0]{type};
       is($type, $taro_cake, "type round tripped");
     };
 
@@ -1415,8 +1417,8 @@ subtest "non-ASCII data" => sub {
       pass("created shoefly cake (really it's pie)! id: $id");
       is($set->created->{yum}{type}, NFC($shoefly), "informed of str normalization");
 
-      my $cake = $jmap_tester->request([[ getCakeRecipes => { ids => [ $id ] } ]]);
-      my $type = $cake->single_sentence('cakeRecipes')->arguments->{list}[0]{type};
+      my $cake = $jmap_tester->request([[ 'CakeRecipe/get' => { ids => [ $id ] } ]]);
+      my $type = $cake->single_sentence('CakeRecipe/get')->arguments->{list}[0]{type};
       isnt($type, $shoefly,       "type didn't round trip unaltered...");
       is($type,   NFC($shoefly),  "...because it got NFC'd");
     };
@@ -1430,14 +1432,14 @@ subtest "ix_created test" => sub {
   # Get topper state
   my $res = $jmap_tester->request([
     [
-      getCakeToppers => { ids => [] }
+      'CakeTopper/get' => { ids => [] }
     ],
   ]);
   ok(defined(my $state = $res->sentence(0)->arguments->{state}), 'got state');
 
   $res = $jmap_tester->request([
     [
-      setCakes => {
+      'Cake/set' => {
         create => {
           yum => { type => 'wedding', layer_count => 4, recipeId => $account{recipes}{1} },
           woo => { type => 'wedding', layer_count => 8, recipeId => $account{recipes}{1} },
@@ -1450,7 +1452,7 @@ subtest "ix_created test" => sub {
     $jmap_tester->strip_json_types( $res->as_stripped_triples ),
     [
       [
-        cakesSet => superhashof({
+        'Cake/set' => superhashof({
           created => {
             yum => superhashof({ id => ignore() }),
             woo => superhashof({ id => ignore() }),
@@ -1458,7 +1460,7 @@ subtest "ix_created test" => sub {
         }), "my id"
       ],
       [
-        cakeToppers => superhashof({
+        'CakeTopper/get' => superhashof({
           list => set(
             {
               cakeId => $res->as_stripped_triples->[0][1]{created}{yum}{id},
@@ -1493,7 +1495,7 @@ subtest "ix_created test" => sub {
   print STDERR "Ignore the next two exception reports for now..\n";
   $res = $jmap_tester->request([
     [
-      setCakes => {
+      'Cake/set' => {
         create => {
           yum => { type => 'wedding', layer_count => 4, recipeId => $account{recipes}{1} },
           woo => { type => 'wedding', layer_count => 8, recipeId => $account{recipes}{1} },
@@ -1506,7 +1508,7 @@ subtest "ix_created test" => sub {
     $res->as_stripped_triples,
     [
       [
-        cakesSet => superhashof({
+        'Cake/set' => superhashof({
           notCreated => {
             woo => { guid => ignore(), type => 'internalError' },
             yum => { guid => ignore(), type => 'internalError' },
@@ -1520,10 +1522,10 @@ subtest "ix_created test" => sub {
   is($res->http_response->header('Vary'), 'Origin', 'got Vary header');
   ok($res->http_response->header('Ix-Transaction-ID'), 'we have a request guid!');
 
-  $res = $jmap_tester->request([ [ getCakes => { ids => [ 1 ] } ] ]);
+  $res = $jmap_tester->request([ [ 'Cake/get' => { ids => [ 1 ] } ] ]);
   is("". $res->sentence(0)->arguments->{state}, $cstate, 'cake state unchanged');
 
-  $res = $jmap_tester->request([ [ getCakeToppers => {} ] ]);
+  $res = $jmap_tester->request([ [ 'CakeTopper/get' => {} ] ]);
   is("". $res->sentence(0)->arguments->{state}, $tstate, 'cake topper state unchanged');
 };
 
@@ -1532,7 +1534,7 @@ subtest "ix_created test" => sub {
 
   # Check state, should be 0
   my $res = $jmap_tester->request([
-    [ getCookies => {} ],
+    [ 'Cookie/get' => {} ],
   ]);
 
   is($res->single_sentence->arguments->{state}, 0, 'got state of 0')
@@ -1540,7 +1542,7 @@ subtest "ix_created test" => sub {
 
   # Ask for updates, should be told we are in sync
   $res = $jmap_tester->request([
-    [ getCookieUpdates => {
+    [ 'Cookie/changes' => {
         sinceState   => 0,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type) ],
@@ -1556,7 +1558,7 @@ subtest "ix_created test" => sub {
   # Add some cookies, ensure ifInState works
   $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         ifInState => 0,
         create    => {
           yellow => { type => 'shortbread', },
@@ -1570,7 +1572,7 @@ subtest "ix_created test" => sub {
     $jmap_tester->strip_json_types( $res->as_pairs ),
     [
       [
-        cookiesSet => superhashof({
+        'Cookie/set' => superhashof({
           oldState => 0,
           newState => 1,
 
@@ -1589,18 +1591,18 @@ subtest "ix_created test" => sub {
 
   # Verify updates
   $res = $jmap_tester->request([
-    [ getCookieUpdates => { sinceState => '0' } ],
+    [ 'Cookie/changes' => { sinceState => '0' } ],
   ]);
 
   cmp_deeply(
     $res->as_stripped_triples->[0][1]{changed},
     set(map { "$_" } @created_ids),
-    "getCookieUpdates with state of 0 works"
+    "'Cookie/changes' with state of 0 works"
   );
 
   # If our sinceState is too low we should get a resync
   $res = $jmap_tester->request([
-    [ getCookieUpdates => {
+    [ 'Cookie/changes' => {
         sinceState   => -1,
         fetchRecords => \1,
         fetchRecordProperties => [ qw(type) ],
@@ -1619,7 +1621,7 @@ subtest "ix_created test" => sub {
 
   # Complex ones too
   $res = $jmap_tester->request([
-    [ getCakeUpdates => { sinceState => '0-0' }, ],
+    [ 'Cake/changes' => { sinceState => '0-0' }, ],
   ]);
 
   $args = $res->single_sentence->arguments;
@@ -1645,17 +1647,17 @@ subtest "deleted entites in get*Updates calls" => sub {
 
   # Get current state
   my $res = $jmap_tester->request([
-    [ getCookies => {} ],
+    [ 'Cookie/get' => {} ],
   ]);
   my $start = $res->single_sentence->arguments->{state};
   ok($start, 'got starting cookie state');
 
   # Create a cookie
   $res = $jmap_tester->request([
-    [ setCookies => { create => { doomed => { type => 'pistachio' } } } ],
+    [ 'Cookie/set' => { create => { doomed => { type => 'pistachio' } } } ],
   ]);
 
-  my $id = $res->single_sentence('cookiesSet')->as_set->created_id('doomed');
+  my $id = $res->single_sentence('Cookie/set')->as_set->created_id('doomed');
   ok($id, 'created a doomed cookie');
 
   my $create = $res->single_sentence->arguments->{newState};
@@ -1663,11 +1665,11 @@ subtest "deleted entites in get*Updates calls" => sub {
 
   # Update it
   $res = $jmap_tester->request([
-    [ setCookies => { update => { $id => { type => 'almond' } } } ],
+    [ 'Cookie/set' => { update => { $id => { type => 'almond' } } } ],
   ]);
 
   is_deeply(
-    [ $res->single_sentence('cookiesSet')->as_set->updated_ids ],
+    [ $res->single_sentence('Cookie/set')->as_set->updated_ids ],
     [ $id ],
     "cookie was updated"
   );
@@ -1677,11 +1679,11 @@ subtest "deleted entites in get*Updates calls" => sub {
 
   # Destroy it with lazers
   $res = $jmap_tester->request([
-    [ setCookies => { destroy => [ "$id" ] } ],
+    [ 'Cookie/set' => { destroy => [ "$id" ] } ],
   ]);
 
   is_deeply(
-    [ $res->single_sentence('cookiesSet')->as_set->destroyed_ids ],
+    [ $res->single_sentence('Cookie/set')->as_set->destroyed_ids ],
     [ $id ],
     "cookie was destroyed"
   );
@@ -1703,7 +1705,7 @@ subtest "deleted entites in get*Updates calls" => sub {
     my ($state, $expect, $desc) = @$test;
 
     my $res = $jmap_tester->request([
-      [ getCookieUpdates => { sinceState => $state } ],
+      [ 'Cookie/changes' => { sinceState => $state } ],
     ]);
 
     jcmp_deeply(
@@ -1740,7 +1742,7 @@ subtest "good call gets headers" => sub {
   $jmap_tester->ua->default_header('Origin' => 'example.net');
 
   my $res = $jmap_tester->request([
-    [ getCookies => {} ],
+    [ 'Cookie/get' => {} ],
   ]);
 
   ok($res->sentence(0)->arguments->{list}, 'got a good response');
@@ -1754,17 +1756,17 @@ subtest "good call gets headers" => sub {
 
 subtest "dateDestroyed has timezone" => sub {
   my $res1 = $jmap_tester->request([
-    [ setCookies => { create => { doomed => { type => 'pistachio' } } } ],
+    [ 'Cookie/set' => { create => { doomed => { type => 'pistachio' } } } ],
   ]);
 
-  my $set1 = $res1->single_sentence('cookiesSet')->as_set;
+  my $set1 = $res1->single_sentence('Cookie/set')->as_set;
   my $id = $set1->created_id('doomed');
 
   my $res2 = $jmap_tester->request([
-    [ setCookies => { destroy => [ "$id" ] } ],
+    [ 'Cookie/set' => { destroy => [ "$id" ] } ],
   ]);
 
-  my $set2 = $res2->single_sentence('cookiesSet')->as_set;
+  my $set2 = $res2->single_sentence('Cookie/set')->as_set;
 
   is_deeply([ $set2->destroyed_ids ], [ $id ], "we destroy the item");
 
@@ -1790,7 +1792,7 @@ subtest "optional idstr" => sub {
   # Create a cookie with an external_id
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'dough', baked_at => undef, external_id => ix_new_id() } },
       },
     ],
@@ -1808,7 +1810,7 @@ subtest "optional idstr" => sub {
 
   $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         update => {
           $id => { external_id => undef },
         },
@@ -1825,7 +1827,7 @@ subtest "optional idstr" => sub {
 
 subtest "ix_custom_deployment_statements" => sub {
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first       => { username => 'case', },
         second      => { username => 'CASE', },
@@ -1848,7 +1850,7 @@ subtest "ix_custom_deployment_statements" => sub {
 
 subtest "friendly duplicate key errors" => sub {
   my $create_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first  => { username => 'kaboom', },
         second => { username => 'anewuser2' },
@@ -1875,7 +1877,7 @@ subtest "friendly duplicate key errors" => sub {
 
   # Same with update
   my $update_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       update => {
         $second => { username => 'kaboom' },
       },
@@ -1896,7 +1898,7 @@ subtest "friendly duplicate key errors" => sub {
 
 subtest "cannot update a destroyed row" => sub {
   my $create_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first  => { username => 'auser', },
       },
@@ -1910,7 +1912,7 @@ subtest "cannot update a destroyed row" => sub {
 
   # Destroy it
   my $destroy_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       destroy => [ $first_id ],
     } ],
   ]);
@@ -1922,7 +1924,7 @@ subtest "cannot update a destroyed row" => sub {
   );
 
   my $update_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       update => {
         $first_id => { username => 'buser' },
       },
@@ -1943,7 +1945,7 @@ subtest "cannot update a destroyed row" => sub {
 
 subtest "ix_custom_deployment_statements" => sub {
   my $set_res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         first => { username => 'someuser', },
       },
@@ -1954,21 +1956,22 @@ subtest "ix_custom_deployment_statements" => sub {
   ok(my $id = $set->as_set->created_id('first'), 'created one user');
 
   my $get_res = $jmap_tester->request([
-    [ getUserList => {
+    [ 'User/query' => {
       filter => { username => 'SOMEUSER' },
     } ],
   ]);
 
+  # TODO backrefs -- michael, 2018-05-09
   jcmp_deeply(
-    $get_res->single_sentence->arguments->{userIds},
+    $get_res->single_sentence->arguments->{UserIds},
     [ $id ],
     'Able to grab our user using case-insensitive search'
-  );
+  ) or diag explain $get_res->as_stripped_pairs;
 };
 
 subtest "space cookies (are totally canceled)" => sub {
   my $res = $jmap_tester->request([[
-    setCookies => {
+    'Cookie/set' => {
       outofthisworld => 1,
 
       create => { raw => { type => 'stardust', baked_at => undef } },
@@ -1983,7 +1986,7 @@ subtest "space cookies (are totally canceled)" => sub {
 
 subtest "property canonicalization" => sub {
   my $create_res = $jmap_tester->request([[
-    setCookies => {
+    'Cookie/set' => {
       create => {
         x => { type => 'chocolate-chip cookie' },
         y => { type => 'chocolate-chip' },
@@ -1991,7 +1994,7 @@ subtest "property canonicalization" => sub {
     },
   ]]);
 
-  my $create_set = $create_res->single_sentence('cookiesSet')->as_set;
+  my $create_set = $create_res->single_sentence('Cookie/set')->as_set;
 
   jcmp_deeply(
     $create_set->created->{x},
@@ -2005,7 +2008,7 @@ subtest "property canonicalization" => sub {
   );
 
   my $update_res = $jmap_tester->request([[
-    setCookies => {
+    'Cookie/set' => {
       update => {
         $create_set->created_id('x') => { type => 'chocolate-chip' },
         $create_set->created_id('y') => { type => 'chocolate-chip cookie' },
@@ -2013,7 +2016,7 @@ subtest "property canonicalization" => sub {
     },
   ]]);
 
-  my $update_set = $update_res->single_sentence('cookiesSet')->as_set;
+  my $update_set = $update_res->single_sentence('Cookie/set')->as_set;
 
   is(
     $update_set->old_state,
@@ -2039,14 +2042,14 @@ subtest "lock timeout" => sub {
     my $lock = $schema->resultset('State')->search(
       {
         accountId => $account{accounts}{rjbs},
-        type      => 'cookies',
+        type      => 'Cookie',
       }, {
         for => 'update',
       }
     )->single;
 
     return $jmap_tester->request([[
-      setCookies => {
+      'Cookie/set' => {
         create => { new => { type => 'ginger', baked_at => undef } },
       }
     ]]);
@@ -2064,19 +2067,19 @@ subtest "string normalization" => sub {
   my $nfd_1 = "u\N{COMBINING DIAERESIS}ser";
 
   my $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         u_nfc   => { username => $nfc_1 },
       },
     } ],
   ]);
 
-  my $created  = $res->paragraph(0)->single('usersSet')->as_set;
+  my $created  = $res->paragraph(0)->single('User/set')->as_set;
   my $first_id = $created->created_id('u_nfc');
 
   # Now try to create user with other normalization of name.
   $res = $jmap_tester->request([
-    [ setUsers => {
+    [ 'User/set' => {
       create => {
         u_nfd => { username => $nfd_1, },
       },
@@ -2084,7 +2087,7 @@ subtest "string normalization" => sub {
   ]);
 
   my $err = $res->paragraph(0)
-                ->single('usersSet')
+                ->single('User/set')
                 ->as_set
                 ->create_errors;
 
@@ -2106,7 +2109,7 @@ subtest "client may init and/or update" => sub {
   #   type => { client_may_init => 1, client_may_update => 0 }
   #   qty  => { client_may_init => 0, client_may_update => 1 }
   my $res = $jmap_tester->request([
-    [ setBiscuits => {
+    [ 'Biscuit/set' => {
         create => {
            foo => { type => 'anzac' },
            bar => { type => 'anzac', qty => jnum(1) },
@@ -2114,7 +2117,7 @@ subtest "client may init and/or update" => sub {
     } ],
   ]);
 
-  my $set = $res->single_sentence('biscuitsSet')->as_set;
+  my $set = $res->single_sentence('Biscuit/set')->as_set;
 
   # 'foo' created
   my $created_id =  $set->created_id('foo');
@@ -2135,10 +2138,10 @@ subtest "client may init and/or update" => sub {
 
   # 'qty' updated
   my $update_res = $jmap_tester->request([[
-    setBiscuits => { update => { $created_id => { qty => jnum(1) } } }
+    'Biscuit/set' => { update => { $created_id => { qty => jnum(1) } } }
     ]]);
 
-  my $update_set = $update_res->single_sentence('biscuitsSet')->as_set;
+  my $update_set = $update_res->single_sentence('Biscuit/set')->as_set;
 
   jcmp_deeply(
     $update_set->updated,
@@ -2148,10 +2151,10 @@ subtest "client may init and/or update" => sub {
 
   # 'type' notUpdated
   $update_res = $jmap_tester->request([[
-    setBiscuits => { update => { $created_id => { type => 'shortbread' } } }
+    'Biscuit/set' => { update => { $created_id => { type => 'shortbread' } } }
     ]]);
 
-  $update_set = $update_res->single_sentence('biscuitsSet')->as_set;
+  $update_set = $update_res->single_sentence('Biscuit/set')->as_set;
 
   jcmp_deeply(
     $update_set->update_errors->{$created_id},
@@ -2170,7 +2173,7 @@ subtest "client may init and/or update" => sub {
 subtest "is_immutable" => sub {
   my $set_res = $jmap_tester->request([
     [
-      setBiscuits => {
+      'Biscuit/set' => {
         create => {
            foo => { type => 'chicken', size => 'jumbo' },
         },
@@ -2178,28 +2181,28 @@ subtest "is_immutable" => sub {
     ],
   ]);
 
-  my $set = $set_res->single_sentence('biscuitsSet')->as_set;
+  my $set = $set_res->single_sentence('Biscuit/set')->as_set;
 
   my $obj = $set->created->{foo};
   ok($obj, "we create an object for foo");
 
   my $get_res = $jmap_tester->request([
-    [ getBiscuits => { ids => [ $obj->{id} ] } ]
+    [ 'Biscuit/get' => { ids => [ $obj->{id} ] } ]
   ]);
 
   is(
-    $get_res->single_sentence('biscuits')->arguments->{list}[0]{size},
+    $get_res->single_sentence('Biscuit/get')->arguments->{list}[0]{size},
     'jumbo',
     "the size was set properly",
   );
 
   {
     my $update_res = $jmap_tester->request([
-      [ setBiscuits => { update => { $obj->{id} => { size => 'x-large' } } } ]
+      [ 'Biscuit/set' => { update => { $obj->{id} => { size => 'x-large' } } } ]
     ]);
 
     jcmp_deeply(
-      $update_res->single_sentence('biscuitsSet')->arguments->{notUpdated},
+      $update_res->single_sentence('Biscuit/set')->arguments->{notUpdated},
       superhashof({
         $obj->{id} => {
           type => 'invalidProperties',
@@ -2218,7 +2221,7 @@ subtest "is_immutable" => sub {
 
     my $sys_res = $ctx->process_request([
       [
-        setBiscuits => {
+        'Biscuit/set' => {
           accountId => $account{accounts}{rjbs},
           update    => { $obj->{id} => { size => 'x-large' } }
         },
@@ -2230,7 +2233,7 @@ subtest "is_immutable" => sub {
       $sys_res,
       [
         [
-          biscuitsSet => superhashof({
+          'Biscuit/set' => superhashof({
             notUpdated => {
               $obj->{id} => {
                 type => 'invalidProperties',

@@ -20,7 +20,7 @@ __PACKAGE__->ix_add_properties(
 
 __PACKAGE__->set_primary_key('id');
 
-sub ix_type_key { 'cakeRecipes' }
+sub ix_type_key { 'CakeRecipe' }
 
 sub ix_account_type { 'generic' }
 
