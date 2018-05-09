@@ -1069,7 +1069,7 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
       state        => $hms,
       total        => $total,
       position     => $arg->{position} // 0,
-      "${key1}Ids" => [ map {; "" . $_->{id} } @items ],  # XXX -- michael, 2018-05-09
+      ids          => [ map {; "" . $_->{id} } @items ],  # XXX -- michael, 2018-05-09
 
       canCalculateUpdates => \1,
     });

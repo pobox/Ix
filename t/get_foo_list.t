@@ -15,6 +15,10 @@ use Test::More;
 use Test::Abortable 'subtest';
 use Unicode::Normalize;
 
+sub mkref ($result_of, $name, $path) {
+  return { resultOf => $result_of, name => $name, path => $path }
+}
+
 my ($app, $jmap_tester) = Bakesale::Test->new_test_app_and_tester;
 \my %account = Bakesale::Test->load_trivial_account($app->processor->schema_connection);
 
@@ -62,7 +66,7 @@ ok($secret2_recipe_id, 'created a marble recipe');
   jcmp_deeply(
     $res->single_sentence->arguments,
     superhashof({
-      CakeIds => [],  # XXX backrefs
+      ids     => [],
       state   => 0,
       total   => 0,
     }),
@@ -150,7 +154,7 @@ $state =~ s/-\d+//;
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [   # XXX backrefs
+      ids => [
         ( sort { $a cmp $b } @cake_id{qw(chocolate1 chocolate2)} ),
         $cake_id{pb1},
       ],
@@ -183,7 +187,7 @@ $state =~ s/-\d+//;
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [    # XXX backrefs
+      ids => [
         $cake_id{pb1},
         # These will still be in .id asc order since we always sort on id
         # last to ensure consistency between results when all other sorts
@@ -264,7 +268,7 @@ subtest "custom condition builder" => sub {
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(chocolate1 chocolate2 pb1)},
       ],
       'filter' => {
@@ -296,7 +300,7 @@ subtest "custom condition builder" => sub {
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(chocolate2 chocolate1 pb1)},
       ],
       'filter' => {
@@ -331,7 +335,7 @@ subtest "custom condition builder" => sub {
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(pb1)},
       ],
       'filter' => {
@@ -369,7 +373,7 @@ subtest "custom condition builder" => sub {
     jcmp_deeply(
       $res->single_sentence->arguments,
       {
-        'CakeIds' => [
+        'ids' => [
           $cid,
         ],
         'filter' => {
@@ -390,8 +394,7 @@ subtest "custom condition builder" => sub {
 #       -- alh, 2016-11-22
 
 {
-  local $TODO = 'revisit with backrefs';
-  # fetch args
+  # backrefs (on old-style jmap: was fetchCakes)
   $res = $jmap_tester->request([
     [
       'Cake/query' => {
@@ -399,7 +402,12 @@ subtest "custom condition builder" => sub {
           recipeId   => $secret1_recipe_id,
           type       => 'peanut butter',
         },
-        fetchCakes => jtrue,
+      },
+      'a',
+    ],
+    [
+      'Cake/get' => {
+        '#ids' => mkref(qw( a Cake/query /ids)),
       },
     ],
   ]);
@@ -407,7 +415,7 @@ subtest "custom condition builder" => sub {
   jcmp_deeply(
     $res->sentence(0)->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(pb1)},
       ],
       'filter' => {
@@ -420,95 +428,7 @@ subtest "custom condition builder" => sub {
       'state' => $state,
       'total' => 1,
     },
-    "'Cake/query' with fetchCakes => 1"
-  ) or diag explain $res->as_stripped_triples;
-
-  # XXX backrefs (broken for now) -- michael, 2018-05-09
-  # jcmp_deeply(
-  #   $res->sentence(1)->arguments->{list},
-  #   [
-  #     superhashof({
-  #       id => $cake_id{pb1},
-  #       type => 'peanut butter',
-  #     }),
-  #   ],
-  #   "got cake back with fetchCakes => 1"
-  # ) or diag explain $res->as_stripped_triples;
-
-  # Fetching just the recipes should work
-  $res = $jmap_tester->request([
-    [
-      'Cake/query' => {
-        filter => {
-          recipeId   => $secret1_recipe_id,
-          type       => 'peanut butter',
-        },
-        fetchRecipes => jtrue,
-      },
-    ],
-  ]);
-
-  jcmp_deeply(
-    $res->sentence(0)->arguments,
-    {
-      'CakeIds' => [
-        @cake_id{qw(pb1)},
-      ],
-      'filter' => {
-        'recipeId' => $secret1_recipe_id,
-        'type'     => 'peanut butter',
-      },
-      'canCalculateUpdates' => jtrue,
-      'position' => 0,
-      'sort' => undef,
-      'state' => $state,
-      'total' => 1,
-    },
-    "Cake/query with fetchRecipes => 1 but no fetchCakes"
-  ) or diag explain $res->as_stripped_triples;
-
-  jcmp_deeply(
-    $res->sentence(1)->arguments->{list},
-    [
-      superhashof({
-        id => $secret1_recipe_id,
-        type => 'secret1',
-      }),
-    ],
-    "got recipe back with no fetchCakes and fetchRecipes => 1"
-  ) or diag explain $res->as_stripped_triples;
-
-  # Provide both
-  $res = $jmap_tester->request([
-    [
-      'Cake/query' => {
-        filter => {
-          recipeId   => $secret1_recipe_id,
-          type       => 'peanut butter',
-        },
-        fetchCakes   => jtrue,
-        fetchRecipes => jtrue,
-      },
-    ],
-  ]);
-
-  jcmp_deeply(
-    $res->sentence(0)->arguments,
-    {
-      'CakeIds' => [
-        @cake_id{qw(pb1)},
-      ],
-      'filter' => {
-        'recipeId' => $secret1_recipe_id,
-        'type'     => 'peanut butter',
-      },
-      'canCalculateUpdates' => jtrue,
-      'position' => 0,
-      'sort' => undef,
-      'state' => $state,
-      'total' => 1,
-    },
-    "Cake/query with fetchCakes => 1"
+    "'Cake/query' with backrefs"
   ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
@@ -519,20 +439,64 @@ subtest "custom condition builder" => sub {
         type => 'peanut butter',
       }),
     ],
-    "got cake back with fetchCakes => 1"
+    "got cake back with backrefs"
   ) or diag explain $res->as_stripped_triples;
 
-  # XXX backrefs -- michael, 2018-05-09
-  # jcmp_deeply(
-  #   $res->sentence(2)->arguments->{list},
-  #   [
-  #     superhashof({
-  #       id => $secret1_recipe_id,
-  #       type => 'secret1',
-  #     }),
-  #   ],
-  #   "got recipe back with fetchCakes => 1 and fetchRecipes => 1"
-  # ) or diag explain $res->as_stripped_triples;
+  # Provide both
+  $res = $jmap_tester->request([
+    [
+      'Cake/query' => {
+        filter => {
+          recipeId   => $secret1_recipe_id,
+          type       => 'peanut butter',
+        },
+      },
+      'a',
+    ],
+    [ 'Cake/get'       => { '#ids' => mkref(qw( a Cake/query /ids )) }, 'b' ],
+    [ 'CakeRecipe/get' => { ids    => [ $secret1_recipe_id ]         }, 'c' ],
+  ]);
+
+  jcmp_deeply(
+    $res->sentence(0)->arguments,
+    {
+      'ids' => [
+        @cake_id{qw(pb1)},
+      ],
+      'filter' => {
+        'recipeId' => $secret1_recipe_id,
+        'type'     => 'peanut butter',
+      },
+      'canCalculateUpdates' => jtrue,
+      'position' => 0,
+      'sort' => undef,
+      'state' => $state,
+      'total' => 1,
+    },
+    "Cake/query with backrefs"
+  ) or diag explain $res->as_stripped_triples;
+
+  jcmp_deeply(
+    $res->sentence(1)->arguments->{list},
+    [
+      superhashof({
+        id => $cake_id{pb1},
+        type => 'peanut butter',
+      }),
+    ],
+    "got cake back with backref"
+  ) or diag explain $res->as_stripped_triples;
+
+  jcmp_deeply(
+    $res->sentence(2)->arguments->{list},
+    [
+      superhashof({
+        id => $secret1_recipe_id,
+        type => 'secret1',
+      }),
+    ],
+    "got recipe back with backrefs"
+  ) or diag explain $res->as_stripped_triples;
 }
 
 {
@@ -545,8 +509,6 @@ subtest "custom condition builder" => sub {
           fake => 'not a real field',
         },
         sort => [ 'type', 'fake asc', 'layer_count asc bad', 'layer_count bad' ],
-        fetchCakes   => jtrue,
-        fetchRecipes => jtrue,
       },
     ],
   ]);
@@ -603,7 +565,7 @@ subtest "custom condition builder" => sub {
   jcmp_deeply(
     $res->single_sentence->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(chocolate2 pb1)},
       ],
       'filter' => {
@@ -855,7 +817,7 @@ subtest "custom condition builder" => sub {
 }
 
 {
-  # fetchFooProperties
+  # backref properties
   $res = $jmap_tester->request([
     [
       'Cake/query' => {
@@ -863,16 +825,22 @@ subtest "custom condition builder" => sub {
           recipeId   => $secret1_recipe_id,
           type       => 'peanut butter',
         },
-        fetchCakes => \1,
-        fetchCakeProperties => [ 'type', 'baked_at' ],
       },
+      'a'
     ],
+    [
+      'Cake/get' => {
+        properties => [ 'type', 'baked_at' ],
+        '#ids' => mkref(qw( a Cake/query /ids )),
+      },
+      'b',
+    ]
   ]);
 
   jcmp_deeply(
     $res->sentence(0)->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(pb1)},
       ],
       'filter' => {
@@ -885,23 +853,22 @@ subtest "custom condition builder" => sub {
       'state' => $state,
       'total' => 1,
     },
-    "Cake/query with fetchRecipes => 1 but no fetchCakes"
+    "Cake/query with properties in backref"
   ) or diag explain $res->as_stripped_triples;
 
-  # XXX backrefs
-  # jcmp_deeply(
-  #   $res->sentence(1)->arguments->{list},
-  #   [
-  #     {
-  #       id       => $cake_id{pb1},
-  #       type     => 'peanut butter',
-  #       baked_at => ignore(),
-  #     },
-  #   ],
-  #   "got cake back with fetchCakes => 1"
-  # ) or diag explain $res->as_stripped_triples;
+  jcmp_deeply(
+    $res->sentence(1)->arguments->{list},
+    [
+      {
+        id       => $cake_id{pb1},
+        type     => 'peanut butter',
+        baked_at => ignore(),
+      },
+    ],
+    "got cake back with backrefs"
+  ) or diag explain $res->as_stripped_triples;
 
-  # fetchOtherFooProperties
+  # was: fetchOtherFooProperties
   $res = $jmap_tester->request([
     [
       'Cake/query' => {
@@ -909,16 +876,21 @@ subtest "custom condition builder" => sub {
           recipeId   => $secret1_recipe_id,
           type       => 'peanut butter',
         },
-        fetchRecipes => \1,
-        fetchRecipeProperties => [ 'is_delicious' ],
       },
     ],
+    [
+      'CakeRecipe/get' => {
+        ids => [ $secret1_recipe_id ],
+        properties => [ 'is_delicious' ],
+      },
+    ],
+
   ]);
 
   jcmp_deeply(
     $res->sentence(0)->arguments,
     {
-      'CakeIds' => [
+      'ids' => [
         @cake_id{qw(pb1)},
       ],
       'filter' => {
@@ -931,7 +903,7 @@ subtest "custom condition builder" => sub {
       'state' => $state,
       'total' => 1,
     },
-    "Cake/query with fetchRecipes => 1 but no fetchCakes"
+    "Cake/query with explicit CakeRecipe/get"
   ) or diag explain $res->as_stripped_triples;
 
   jcmp_deeply(
@@ -942,7 +914,7 @@ subtest "custom condition builder" => sub {
         is_delicious => jtrue,
       },
     ],
-    "got recipe back with no fetchCakes and fetchRecipes => 1"
+    "got recipe back with explicit get"
   ) or diag explain $res->as_stripped_triples;
 }
 
@@ -970,7 +942,7 @@ subtest 'custom differ, and no required filters' => sub {
     jcmp_deeply(
       $cl_res->single_sentence->arguments,
       superhashof({
-        CookieIds => [],
+        ids => [],
       }),
       "No cookies match our filter yet"
     ) or diag explain $cl_res->as_stripped_triples;
@@ -1101,7 +1073,7 @@ subtest "filters on joined tables" => sub {
     jcmp_deeply(
       $res->single_sentence->arguments,
       {
-        'CakeIds' => [
+        'ids' => [
           $cake_id{chocolate2},
           $cake_id{pb1},
         ],
@@ -1179,7 +1151,7 @@ subtest "filters on joined tables" => sub {
     jcmp_deeply(
       $res->single_sentence->arguments,
       {
-        'CakeIds' => [],
+        'ids' => [],
         'filter' => {
           'recipeId' => $secret1_recipe_id,
           'recipe.is_delicious' => jfalse,
@@ -1375,7 +1347,7 @@ subtest "distinct rows only" => sub {
   jcmp_deeply(
     $res->single_sentence->arguments,
     superhashof({
-      CakeIds => [
+      ids => [
         sort { $a cmp $b } values %cake_id,
       ],
       total => 5,

@@ -16,6 +16,10 @@ use Test::More;
 use Unicode::Normalize;
 use Ix::Util qw(ix_new_id);
 
+sub mkref ($result_of, $name, $path) {
+  return { resultOf => $result_of, name => $name, path => $path }
+}
+
 my $no_updates = any({}, undef);
 
 my ($app, $jmap_tester) = Bakesale::Test->new_test_app_and_tester;
@@ -115,11 +119,12 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
 
 {
   my $res = $jmap_tester->request([
-    [ 'Cookie/changes' => {
-        sinceState   => 2,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type) ],
-      }
+    [ 'Cookie/changes' => { sinceState   => 2 }, 'a' ],
+    [
+      'Cookie/get' => {
+        properties => [ qw(type) ],
+        '#ids' => mkref('a', 'Cookie/changes', '/changed'),
+      }, 'b',
     ],
   ]);
 
@@ -387,7 +392,8 @@ subtest "invalid sinceState" => sub {
   ]);
 
   my $res = $jmap_tester->request([
-    [ 'Cookie/changes' => { sinceState => 8, fetchRecords => 1 } ],
+    [ 'Cookie/changes' => { sinceState => 8 }, 'a' ],
+    [ 'Cookie/get' => { '#ids' => mkref(qw(a Cookie/changes /changed)) }, 'b' ],
   ]);
 
   my $get_payloads = $jmap_tester->strip_json_types(
@@ -413,7 +419,7 @@ subtest "invalid sinceState" => sub {
         },
       ],
     ],
-    "updates can be got (with implicit fetch)",
+    "updates can be got (with implicit get)",
   ) or diag explain( $jmap_tester->strip_json_types( $res->as_pairs ) );
 }
 
@@ -887,12 +893,13 @@ subtest "timestamptz field validations" => sub {
 
   # Verify
   $res = $jmap_tester->request([
+    [ 'Cookie/changes' => { sinceState => $state - 1 }, 'a' ],
     [
-      'Cookie/changes' => {
-        sinceState => $state - 1,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type baked_at expires_at) ],
+      'Cookie/get' => {
+        properties => [ qw(type baked_at expires_at) ],
+        '#ids' => mkref(qw( a Cookie/changes /changed )),
       },
+      'b',
     ],
   ]);
 
@@ -972,12 +979,13 @@ subtest "timestamptz field validations" => sub {
 
   # Verify (still using much older state so we can see white in the list)
   $res = $jmap_tester->request([
+    [ 'Cookie/changes' => { sinceState => $state - 2 }, 'a' ],
     [
-      'Cookie/changes' => {
-        sinceState => $state - 2,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type baked_at expires_at) ],
+      'Cookie/get' => {
+        properties => [ qw(type baked_at expires_at) ],
+        '#ids' => mkref(qw(a Cookie/changes /changed)),
       },
+      'b',
     ],
   ]);
 
@@ -1544,15 +1552,17 @@ subtest "ix_created test" => sub {
 
   # Ask for updates, should be told we are in sync
   $res = $jmap_tester->request([
-    [ 'Cookie/changes' => {
-        sinceState   => 0,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type) ],
-      }
+    [ 'Cookie/changes' => { sinceState => 0 }, 'a' ],
+    [
+      'Cookie/get' => {
+        properties => [ qw(type) ],
+        '#ids' => mkref(qw(a Cookie/changes /changed)),
+      },
+      'b',
     ],
   ]);
 
-  my $args = $res->single_sentence->arguments;
+  my $args = $res->sentence(0)->arguments;
   is($args->{newState}, 0, "newState is right");
   is($args->{oldState}, 0, "oldState is right");
   is_deeply($args->{changed}, [], 'no changes');
@@ -1604,11 +1614,13 @@ subtest "ix_created test" => sub {
 
   # If our sinceState is too low we should get a resync
   $res = $jmap_tester->request([
-    [ 'Cookie/changes' => {
-        sinceState   => -1,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type) ],
-      }
+    [ 'Cookie/changes' => { sinceState   => -1 }, 'a' ],
+    [
+      'Cookie/get' => {
+        properties => [ qw(type) ],
+        '#ids' => mkref(qw(a Cookie/changes /changed)),
+      },
+      'b',
     ],
   ]);
 
@@ -1963,9 +1975,8 @@ subtest "ix_custom_deployment_statements" => sub {
     } ],
   ]);
 
-  # TODO backrefs -- michael, 2018-05-09
   jcmp_deeply(
-    $get_res->single_sentence->arguments->{UserIds},
+    $get_res->single_sentence->arguments->{ids},
     [ $id ],
     'Able to grab our user using case-insensitive search'
   ) or diag explain $get_res->as_stripped_pairs;
@@ -2401,10 +2412,6 @@ subtest "result references" => sub {
       }),
       $cid // ignore(),
     ]
-  }
-
-  my sub mkref ($result_of, $name, $path) {
-    return { resultOf => $result_of, name => $name, path => $path }
   }
 
   my $res = $jmap_tester->request([

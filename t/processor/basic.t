@@ -95,13 +95,17 @@ my $ctx = $Bakesale->get_context({
 
 {
   my $res = $ctx->process_request([
+    [ 'Cookie/changes' => { sinceState => 2 }, 'a' ],
     [
-      'Cookie/changes' => {
-        sinceState => 2,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type) ]
+      'Cookie/get' => {
+        properties => [ 'type' ],
+        '#ids' => {
+          resultOf => 'a',
+          name => 'Cookie/changes',
+          path => '/changed'
+        },
       },
-      'a',
+      'b',
     ],
   ]);
 
@@ -119,7 +123,7 @@ my $ctx = $Bakesale->get_context({
             { id => $account{cookies}{6}, type => 'immortal', }, # baked_at => 1455310000 },
           ],
         },
-        'a',
+        'b',
       ],
     ],
     "a Foo/get call backed by the database",
@@ -290,40 +294,46 @@ subtest "invalid sinceState" => sub {
 
 {
   my $get_res = $ctx->process_request([
-    [ getCookies => { ids => [ $account{cookies}{1}, @created_ids ] }, 'a' ],
+    [ 'Cookie/get' => { ids => [ $account{cookies}{1}, @created_ids ] }, 'a' ],
   ]);
 
   my $res = $ctx->process_request([
-    [ 'Cookie/changes' => { sinceState => 8, fetchRecords => 1 }, 'a' ],
+    [ 'Cookie/changes' => { sinceState => 8 }, 'a' ],
+    [
+      'Cookie/get' => {
+        '#ids' => {
+          resultOf => 'a',
+          name => 'Cookie/changes',
+          path => '/changed',
+        },
+      },
+      'b',
+    ]
   ]);
 
-  TODO: {
-    local $TODO = 'revisit when we get to backrefs';
-    cmp_deeply(
-      $res,
+  cmp_deeply(
+    $res,
+    [
       [
-        [
-          'Cookie/changes' => {
-            oldState => 8,
-            newState => 9,
-            hasMoreUpdates => bool(0),
-            changed  => bag($account{cookies}{1}, @created_ids),
-            removed  => bag($account{cookies}{4}),
-          },
-          'a',
-        ],
-        [
-          'Cookie/get' => {
-            $get_res->[0][1]->%*,
-            list => bag( $get_res->[0][1]{list}->@* ),
-          },
-          'a',
-        ]
+        'Cookie/changes' => {
+          oldState => 8,
+          newState => 9,
+          hasMoreUpdates => bool(0),
+          changed  => bag($account{cookies}{1}, @created_ids),
+          removed  => bag($account{cookies}{4}),
+        },
+        'a',
       ],
-      "updates can be got (with implicit fetch)",
-    ); # or diag explain($res);
-  }
-
+      [
+        'Cookie/get' => {
+          $get_res->[0][1]->%*,
+          list => bag( $get_res->[0][1]{list}->@* ),
+        },
+        'b',
+      ]
+    ],
+    "updates can be got with backrefs",
+  ) or diag explain $res;
 }
 
 {
@@ -450,13 +460,17 @@ subtest "invalid sinceState" => sub {
 
   # Verify we got the right dates
   $res = $ctx->process_request([
+    [ 'Cookie/changes' => { sinceState => 9, }, 'a' ],
     [
-      'Cookie/changes' => {
-        sinceState => 9,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type baked_at) ]
-      }, 'a',
-    ],
+      'Cookie/get' => {
+        properties => [ qw(type baked_at) ],
+        '#ids' => {
+          resultOf => 'a',
+          name => 'Cookie/changes',
+          path => '/changed'
+        },
+      }, 'b',
+    ]
   ]);
 
   cmp_deeply(
@@ -472,10 +486,10 @@ subtest "invalid sinceState" => sub {
             { id => $c_to_id{red}, type => 'red', baked_at => ignore() },
           ),
         },
-        'a',
+        'b',
       ],
     ],
-    "a getFoos call backed by the database",
+    "a Foo/get call backed by the database",
   ) or diag explain($res);
 
   ok($res->[1][1]{list}[0]{baked_at}->$_isa('DateTime'), 'got a dt object');
@@ -524,13 +538,18 @@ subtest "invalid sinceState" => sub {
 
   # Verify we updated to the new past
   $res = $ctx->process_request([
+    [ 'Cookie/changes' => { sinceState => 10, }, 'a' ],
     [
-      'Cookie/changes' => {
-        sinceState => 10,
-        fetchRecords => \1,
-        fetchRecordProperties => [ qw(type baked_at) ]
-      }, 'a',
-    ],
+      'Cookie/get' => {
+        properties => [ qw(type baked_at) ],
+        '#ids' => {
+          resultOf => 'a',
+          name => 'Cookie/changes',
+          path => '/changed',
+        },
+      },
+      'b',
+    ]
   ]);
 
   cmp_deeply(
@@ -545,7 +564,7 @@ subtest "invalid sinceState" => sub {
             { id => $c_to_id{yellow}, type => 'yellow', baked_at => ignore() },
           ],
         },
-        'a',
+        'b',
       ],
     ],
     "a getFoos call backed by the database",
