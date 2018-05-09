@@ -260,26 +260,6 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       removed => \@removed,
     });
 
-    if ($arg->{fetchRecords}) {
-      # XXX This is pretty sub-optimal, because we might be passing a @changed of
-      # size 500+, which becomes 500 placeholder variables.  Stupid.  If it comes
-      # to it, we could maybe run-encode them with BETWEEN queries.
-      #
-      # We used to do a *single* select, which was a nice optimization, but it
-      # bypassed permissions imposed by "get" query extras.  We need to *not* use
-      # those in getting updates, but to use them in getting records.
-      #
-      # Next attempt was to use a ResultSetColumn->as_query on the above query's
-      # id column.  That's no good because we're manually trimming the results
-      # based on id boundaries.  We may be able to improve the above query, then
-      # use this strategy.  For now, just gonna let it go until we hit problems!
-      # -- rjbs, 2016-06-08
-      push @return, $self->ix_get($ctx, {
-        ids => \@changed,
-        properties => $arg->{fetchRecordProperties},
-      });
-    }
-
     return @return;
   });
 }
@@ -1019,15 +999,12 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
   return $ctx->txn_do(sub {
     my $key = $rclass->ix_type_key;
     my $key1 = $rclass->ix_type_key_singular;
-    my $fetch_arg = "fetch\u$key";
-    my $fetch_properties_arg = "fetch\u${key1}Properties";
     my $orig_filter = $arg->{filter};
     my $orig_sort   = $arg->{sort};
 
     my $schema = $ctx->schema;
 
     my $limit = $arg->{limit} // 500;
-    $limit = 500 if $limit > 500 && $arg->{$fetch_arg};
 
     my $search = $self->_get_list_search_args($ctx, $arg);
     $search->{filter}{'me.isActive'} = 1;
@@ -1069,47 +1046,10 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
       state        => $hms,
       total        => $total,
       position     => $arg->{position} // 0,
-      ids          => [ map {; "" . $_->{id} } @items ],  # XXX -- michael, 2018-05-09
+      ids          => [ map {; "" . $_->{id} } @items ],
 
       canCalculateUpdates => \1,
     });
-
-    # fetchFoos
-    if ($arg->{$fetch_arg}) {
-      push @res, $self->ix_get($ctx, {
-        ids => [ map {; "" . $_->{id} } @items ],
-
-        # fetchFooProperties => [ '...' ]
-        ( $arg->{$fetch_properties_arg}
-          ? ( properties => $arg->{$fetch_properties_arg } )
-          : ()
-        ),
-      });
-    }
-
-    # Any other fetch* args?
-    for my $field (keys $rclass->ix_get_list_fetchable_map->%*) {
-      if ($arg->{$field}) {
-        my $fetchable = $rclass->ix_get_list_fetchable_map->{$field};
-        my $result_set = $schema->resultset($fetchable->{result_set});
-        my $properties_arg = $fetchable->{properties_arg};
-
-        unless (defined $properties_arg) {
-          my $singular = $field =~ s/s\z//r;
-          $properties_arg = "${singular}Properties";
-        }
-
-        push @res, $result_set->ix_get($ctx, {
-          ids => [ map {; "" . $_->{$fetchable->{field}} } @items ],
-
-          # fetchOtherFooProperties
-          ( $arg->{$properties_arg}
-            ? ( properties => $arg->{$properties_arg} )
-            : ()
-          ),
-        });
-      }
-    }
 
     return @res;
   });

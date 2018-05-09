@@ -390,9 +390,6 @@ subtest "custom condition builder" => sub {
   }
 }
 
-# XXX - Test for limit set at 500 if fetching extras
-#       -- alh, 2016-11-22
-
 {
   # backrefs (on old-style jmap: was fetchCakes)
   $res = $jmap_tester->request([
@@ -868,7 +865,7 @@ subtest "custom condition builder" => sub {
     "got cake back with backrefs"
   ) or diag explain $res->as_stripped_triples;
 
-  # was: fetchOtherFooProperties
+  # backrefs (on old-style jmap: was fetchOtherFooProperties)
   $res = $jmap_tester->request([
     [
       'Cake/query' => {

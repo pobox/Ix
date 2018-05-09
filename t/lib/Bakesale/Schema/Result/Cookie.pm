@@ -142,8 +142,6 @@ sub ix_get_list_filter_map {
   };
 }
 
-sub ix_get_list_fetchable_map { { } }
-
 sub ix_get_list_joins { () }
 
 sub ix_get_list_check ($self, $ctx, $arg, $search) {

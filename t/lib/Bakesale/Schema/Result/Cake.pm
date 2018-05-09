@@ -234,15 +234,6 @@ sub ix_get_list_filter_map {
   };
 }
 
-sub ix_get_list_fetchable_map {
-  return {
-    fetchRecipes => {
-      field      => 'recipeId',
-      result_set => 'CakeRecipe',
-    },
-  };
-}
-
 sub ix_get_list_joins {
   return $ENV{RECIPEID_NOT_REQUIRED}
     ? ('topper')

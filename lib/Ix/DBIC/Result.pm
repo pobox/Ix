@@ -214,7 +214,6 @@ sub ix_finalize ($class) {
     for my $method (qw(
       ix_get_list_check
       ix_get_list_updates_check
-      ix_get_list_fetchable_map
       ix_get_list_filter_map
       ix_get_list_sort_map
       ix_get_list_joins
