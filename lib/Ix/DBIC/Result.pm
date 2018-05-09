@@ -18,10 +18,6 @@ sub ix_account_type { Carp::confess("ix_account_type not implemented") }
 # Checked for in ix_finalize
 # sub ix_type_key { }
 
-sub ix_type_key_singular ($self) {
-  $self->ix_type_key =~ s/s\z//r;
-}
-
 sub ix_get_list_enabled {}
 sub ix_extra_get_args { }
 

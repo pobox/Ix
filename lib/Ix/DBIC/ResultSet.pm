@@ -147,7 +147,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       return $error;
     }
 
-    my $type_key = $rclass->ix_type_key_singular;
+    my $type_key = $rclass->ix_type_key;
     my $schema   = $ctx->schema;
     my $res_type = "$type_key/changes";
 
@@ -998,7 +998,6 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
 
   return $ctx->txn_do(sub {
     my $key = $rclass->ix_type_key;
-    my $key1 = $rclass->ix_type_key_singular;
     my $orig_filter = $arg->{filter};
     my $orig_sort   = $arg->{sort};
 
@@ -1061,7 +1060,6 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
 
   return $ctx->txn_do(sub {
     my $key = $rclass->ix_type_key;
-    my $key1 = $rclass->ix_type_key_singular;
 
     my $schema = $ctx->schema;
 
@@ -1205,11 +1203,11 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
         push @removed, "" . $entity->id;
         $count++;
       } elsif (! $is_removed && $is_new) {
-        push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+        push @added, { index => $i, "id" => "" . $entity->id };
         $count++;
       } elsif (! $is_removed && $is_changed) {
         push @removed, "" . $entity->id;
-        push @added, { index => $i, "${key1}Id" => "" . $entity->id };
+        push @added, { index => $i, "id" => "" . $entity->id };
         $count += 2;
       }
 
@@ -1222,7 +1220,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       $i++ unless $is_removed;
     }
 
-    return $ctx->result("$key1/queryChanges" => {
+    return $ctx->result("$key/queryChanges" => {
       filter => $orig_filter,
       sort   => $orig_sort,
       oldState => "" . $since_state,

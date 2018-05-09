@@ -600,11 +600,11 @@ subtest "custom condition builder" => sub {
     {
       'added' => [
         {
-          'CakeId' => $cake_id{chocolate2},
+          'id' => $cake_id{chocolate2},
           'index' => 0,
         },
         {
-          'CakeId' => $cake_id{pb1},
+          'id' => $cake_id{pb1},
           'index' => 1,
         }
       ],
@@ -753,7 +753,7 @@ subtest "custom condition builder" => sub {
     {
       'added' => [
         {
-          'CakeId' => $cake_id{pb1},  # XXX backrefs
+          'id' => $cake_id{pb1},
           'index' => 1,
         },
       ],
@@ -988,10 +988,10 @@ subtest 'custom differ, and no required filters' => sub {
         added => [
           {
             index => 0,
-            CookieId => $oatmeal,
+            id => $oatmeal,
           }, {
             index => 1,
-            CookieId => $oreo,
+            id => $oreo,
           }
         ],
         removed => [ ],
@@ -1040,7 +1040,7 @@ subtest 'custom differ, and no required filters' => sub {
         added => [
           {
             index => 0,
-            CookieId => $peanut,
+            id => $peanut,
           },
         ],
         removed => [
@@ -1108,11 +1108,11 @@ subtest "filters on joined tables" => sub {
       {
         'added' => [
           {
-            'CakeId' => $cake_id{chocolate2},
+            'id' => $cake_id{chocolate2},
             'index' => 0,
           },
           {
-            'CakeId' => $cake_id{pb1},
+            'id' => $cake_id{pb1},
             'index' => 1,
           }
         ],
@@ -1220,14 +1220,14 @@ subtest "differ boolean comparison when db row is false" => sub {
       {
         'added' => set(
           superhashof({
-            'CakeId' => $cake_id{marble1},
+            'id' => $cake_id{marble1},
           }),
           superhashof({
-            'CakeId' => $cake_id{marble2},
+            'id' => $cake_id{marble2},
             'index'  => ignore(),
           }),
           superhashof({
-            'CakeId' => $cake_id{lemon1},
+            'id' => $cake_id{lemon1},
             'index'  => ignore(),
           }),
         ),
@@ -1367,7 +1367,7 @@ subtest "distinct rows only" => sub {
         map {;
           {
             index  => ignore(),
-            CakeId => $_
+            id => $_
           },
         } sort { $a cmp $b } values %cake_id,
       ],
