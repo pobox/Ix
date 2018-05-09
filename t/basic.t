@@ -8,6 +8,7 @@ use lib 't/lib';
 use Bakesale;
 use Bakesale::App;
 use Bakesale::Schema;
+use Capture::Tiny qw(capture_stderr);
 use JSON::MaybeXS;
 use Test::Deep;
 use Test::Deep::JType;
@@ -1492,17 +1493,18 @@ subtest "ix_created test" => sub {
   # But can they throw sensible-ish errors?
   local @ENV{qw(NO_CAKE_TOPPERS QUIET_BAKESALE)} = (1, 1);
 
-  print STDERR "Ignore the next two exception reports for now..\n";
-  $res = $jmap_tester->request([
-    [
-      'Cake/set' => {
-        create => {
-          yum => { type => 'wedding', layer_count => 4, recipeId => $account{recipes}{1} },
-          woo => { type => 'wedding', layer_count => 8, recipeId => $account{recipes}{1} },
-        }
-      }, "my id"
-    ],
-  ]);
+  capture_stderr(sub {
+    $res = $jmap_tester->request([
+      [
+        'Cake/set' => {
+          create => {
+            yum => { type => 'wedding', layer_count => 4, recipeId => $account{recipes}{1} },
+            woo => { type => 'wedding', layer_count => 8, recipeId => $account{recipes}{1} },
+          }
+        }, "my id"
+      ],
+    ]);
+  });
 
   cmp_deeply(
     $res->as_stripped_triples,
@@ -2444,8 +2446,7 @@ subtest "exeptions are not thrown twice" => sub {
 
   $app->processor->clear_exceptions;
 
-  print STDERR "Ignore the next exception report for now..\n";
-  my $res = $jmap_tester->ua->get($uri);
+  my (undef, $res) = capture_stderr(sub { $jmap_tester->ua->get($uri) });
   like(
     $res->content,
     qr/"error":"internal"/,

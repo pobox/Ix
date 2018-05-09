@@ -6,6 +6,7 @@ use lib 't/lib';
 
 use Bakesale;
 use Bakesale::Schema;
+use Capture::Tiny qw(capture_stderr);
 use Test::Deep;
 use Test::More;
 use Safe::Isa;
@@ -607,20 +608,22 @@ subtest "invalid sinceState" => sub {
   # not reused
   $ctx = $ctx->with_account('generic' => undef);
 
-  print STDERR "Ignore the next exception report for now..\n";
-  my $error = try {
-    $ctx->process_request([
-      [
-        'Cake/set' => { create => [] },
-      ],
-    ]);
+  capture_stderr(sub {
+    print STDERR "Ignore the next exception report for now..\n";
+    my $error = try {
+      $ctx->process_request([
+        [
+          'Cake/set' => { create => [] },
+        ],
+      ]);
 
-    return;
-  } catch {
-    return $_;
-  };
+      return;
+    } catch {
+      return $_;
+    };
 
-  ok($error, 'process_request died');
+    ok($error, 'process_request died');
+  });
 
   # Make another call with that ctx, should succeed
   my $cake_res = $ctx->process_request([
