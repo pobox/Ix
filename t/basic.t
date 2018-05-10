@@ -568,7 +568,13 @@ subtest "make a recipe and a cake in one transaction" => sub {
             },
           }
       }) ],
-      [ 'Cake/set'       => superhashof({}) ],
+      [ 'Cake/set'       => superhashof({
+          created => {
+            magic => superhashof({
+              id => ignore (),
+            }),
+          },
+      }) ],
     ],
     "we can bake cakes with recipes in one go",
   ) or note(explain($res->as_pairs));
@@ -768,8 +774,6 @@ subtest "delete the deleted" => sub {
 };
 
 subtest "duplicated creation ids" => sub {
-  # TODO -- michael, 2018-05-09
-  local $TODO = 'revisit with bakrefs';
   my $res = $jmap_tester->request([
     [
       'CakeRecipe/set' => { create => {

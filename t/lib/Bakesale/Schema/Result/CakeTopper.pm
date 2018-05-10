@@ -17,7 +17,7 @@ __PACKAGE__->ix_add_properties(
   type   => { data_type => 'string',     },
   cakeId => {
     data_type    => 'idstr',
-    xref_to      => 'cakes'
+    xref_to      => 'Cake'
   },
 );
 
