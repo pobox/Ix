@@ -1277,29 +1277,28 @@ sub _get_list_search_args ($self, $ctx, $arg) {
     }
   }
   my @sort;
-  my %bad_sort;
+  my @bad_sort;
 
   my $sort_map = $rclass->ix_get_list_sort_map;
 
   SORT: for my $sort ($arg->{sort}->@*) {
-    my ($field, $order, $extra) = split /\s+/, $sort, 3;
+    my @bad = grep {; $_ !~ /\A(?:property|isAscending|collation)\z/ } keys %$sort;
+    if (@bad) {
+      push @bad_sort, "invalid sort format: unknown arguments [@bad]";
+      next SORT;
+    }
+
+    my $field = $sort->{property};
+    my $order = $sort->{isAscending};    # XXX strictly type this?
+    $order = defined $order && ! $order ? 'desc' : 'asc';
+
+    if (! defined $field ) {
+      push @bad_sort, 'invalid sort format: missing property name';
+      next SORT;
+    }
+
     if (! $sort_map->{$field}) {
-      $bad_sort{$sort} = 'unknown sort field';
-      next SORT;
-    }
-
-    if (! $order) {
-      $bad_sort{$sort} = 'invalid sort format: missing sort order';
-      next SORT;
-    }
-
-    if ($extra) {
-      $bad_sort{$sort} = 'invalid sort format: expected exactly two arguments';
-      next SORT;
-    }
-
-    if ($order ne 'asc' && $order ne 'desc') {
-      $bad_sort{$sort} = "invalid sort format: sort order must be 'asc' or 'desc'";
+      push @bad_sort, "unknown sort field '$field'";
       next SORT;
     }
 
@@ -1320,11 +1319,11 @@ sub _get_list_search_args ($self, $ctx, $arg) {
   # ensure that we are. -- rjbs, 2016-05-13
   push @sort, "me.id";
 
-  if (%bad_filter || %bad_sort) {
+  if (%bad_filter || @bad_sort) {
     $ctx->error(invalidArguments => {
       description => "Invalid arguments",
       ( %bad_filter ? ( invalidFilters => \%bad_filter ) : () ),
-      ( %bad_sort   ? ( invalidSorts   => \%bad_sort   ) : () ),
+      ( @bad_sort   ? ( invalidSorts   => \@bad_sort   ) : () ),
     })->throw;
   }
 

@@ -58,7 +58,7 @@ ok($secret2_recipe_id, 'created a marble recipe');
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'created asc' ],
+        sort => [{ property => 'created', isAscending => jtrue }],
       },
     ],
   ]);
@@ -79,7 +79,7 @@ ok($secret2_recipe_id, 'created a marble recipe');
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'created asc' ],
+        sort => [{ property => 'created', isAscending => jtrue }],
         sinceState => 0,
       },
     ],
@@ -97,7 +97,6 @@ ok($secret2_recipe_id, 'created a marble recipe');
     "ix_get_list_update works with no state rows"
   );
 }
-
 
 # Now create a few cakes under each one
 $res = $jmap_tester->request([
@@ -146,7 +145,7 @@ $state =~ s/-\d+//;
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
       },
     ],
   ]);
@@ -164,7 +163,7 @@ $state =~ s/-\d+//;
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => [
-        'type asc',
+        { property => 'type', isAscending => jtrue },
       ],
       'state' => $state,
       'total' => 3,
@@ -179,7 +178,7 @@ $state =~ s/-\d+//;
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type desc' ],
+        sort => [{ property => 'type', isAscending => jfalse }],
       },
     ],
   ]);
@@ -200,7 +199,7 @@ $state =~ s/-\d+//;
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => [
-        'type desc'
+        { property => 'type', isAscending => jfalse }
       ],
       'state' => $state,
       'total' => 3,
@@ -260,7 +259,10 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc', 'layer_count asc' ],
+        sort => [
+          { property => 'type',        isAscending => jtrue },
+          { property => 'layer_count', isAscending => jtrue },
+        ],
       },
     ],
   ]);
@@ -277,8 +279,8 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => [
-        'type asc',
-        'layer_count asc',
+        { property => 'type',        isAscending => jtrue },
+        { property => 'layer_count', isAscending => jtrue },
       ],
       'state' => $state,
       'total' => 3,
@@ -292,7 +294,10 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc', 'layer_count desc' ],
+        sort => [
+          { property => 'type',        isAscending => jtrue },
+          { property => 'layer_count', isAscending => jfalse },
+        ],
       },
     ],
   ]);
@@ -309,8 +314,8 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => [
-        'type asc',
-        'layer_count desc',
+        { property => 'type',        isAscending => jtrue },
+        { property => 'layer_count', isAscending => jfalse },
       ],
       'state' => $state,
       'total' => 3,
@@ -505,7 +510,12 @@ subtest "custom condition builder" => sub {
         filter => {
           fake => 'not a real field',
         },
-        sort => [ 'type', 'fake asc', 'layer_count asc bad', 'layer_count bad' ],
+        sort => [
+          { property => 'type' },   # this is fine; defaults to ascending
+          { property => 'fake', isAscending => jtrue },
+          { property => 'fake', isAscending => jtrue, bad => 'foo' },
+          { property => 'fake', bad => 'foo' },
+        ]
       },
     ],
   ]);
@@ -519,12 +529,11 @@ subtest "custom condition builder" => sub {
         'fake'     => 'unknown filter field',
         'recipeId' => 'required filter missing',
       },
-      'invalidSorts' => {
-        'fake asc'    => 'unknown sort field',
-        'type'        => 'invalid sort format: missing sort order',
-        'layer_count bad' => "invalid sort format: sort order must be 'asc' or 'desc'",
-        'layer_count asc bad' => "invalid sort format: expected exactly two arguments",
-      },
+      'invalidSorts' => [
+        "unknown sort field 'fake'",
+        "invalid sort format: unknown arguments [bad]",
+        "invalid sort format: unknown arguments [bad]",
+      ],
     },
     "bad /query forms detected",
   ) or diag explain $res->as_stripped_triples;
@@ -554,7 +563,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
       },
     ],
   ]);
@@ -571,7 +580,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => [
-        'type asc',
+        { property => 'type', isAscending => jtrue },
       ],
       'state' => $state,
       'total' => 2,
@@ -589,7 +598,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
         sinceState => $state - 2,
       },
     ],
@@ -615,7 +624,7 @@ subtest "custom condition builder" => sub {
       'oldState' => jstr($state-2),
       'removed' => [],
       'sort' => [
-        'type asc'
+        { property => 'type', isAscending => jtrue },
       ],
       'total' => 2
     },
@@ -629,7 +638,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
         sinceState => $state - 1,
       },
     ],
@@ -647,9 +656,7 @@ subtest "custom condition builder" => sub {
       'removed' => [
         $cake_id{chocolate1},
       ],
-      'sort' => [
-        'type asc'
-      ],
+      sort => [{ property => 'type', isAscending => jtrue }],
       'total' => 2
     },
     "Cake/queryChanges looks right for removed cake"
@@ -664,7 +671,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
       },
     ],
   ]);
@@ -687,7 +694,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
         sinceState => $state,
       },
     ],
@@ -703,9 +710,7 @@ subtest "custom condition builder" => sub {
       'newState' => jstr($state),
       'oldState' => jstr($state),
       'removed' => [],
-      'sort' => [
-        'type asc'
-      ],
+      'sort'    => [{ property => 'type', isAscending => jtrue }],
       'total' => 2
     },
     "Cake/queryChanges looks right for no changes"
@@ -741,7 +746,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => $secret1_recipe_id,
         },
-        sort => [ 'type asc' ],
+        sort => [{ property => 'type', isAscending => jtrue }],
         sinceState => $state-1,
       },
     ],
@@ -765,9 +770,7 @@ subtest "custom condition builder" => sub {
       'removed' => [
         $cake_id{pb1},
       ],
-      'sort' => [
-        'type asc'
-      ],
+      'sort'  => [{ property => 'type', isAscending => jtrue }],
       'total' => 2
     },
     "Cake/queryChanges looks right for no changes"
@@ -927,7 +930,7 @@ subtest 'custom differ, and no required filters' => sub {
       types => [ 'oatmeal stout', 'oreo stout' ],
       batch => $Bakesale::Schema::Result::Cookie::next_batch,
     },
-    sort   => [ "type asc" ],
+    sort   => [{ property => 'type', isAscending => jtrue }],
   );
 
   {
@@ -1062,7 +1065,7 @@ subtest "filters on joined tables" => sub {
             'recipeId' => $secret1_recipe_id,
             'recipe.is_delicious' => jtrue,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
         },
       ],
     ]);
@@ -1081,9 +1084,7 @@ subtest "filters on joined tables" => sub {
         },
         'canCalculateUpdates' => jtrue,
         'position' => 0,
-        'sort' => [
-          'type asc',
-        ],
+        'sort'  => [{ property => 'type', isAscending => jtrue }],
         'state' => $state,
         'total' => 2,
       },
@@ -1097,7 +1098,7 @@ subtest "filters on joined tables" => sub {
             recipeId => $secret1_recipe_id,
             'recipe.is_delicious' => jtrue,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
           sinceState => $state - 3,
         },
       ],
@@ -1123,9 +1124,7 @@ subtest "filters on joined tables" => sub {
         'newState' => $state,
         'oldState' => $state - 3,
         'removed' => [],
-        'sort' => [
-          'type asc'
-        ],
+        'sort'  => [{ property => 'type', isAscending => jtrue }],
         'total' => 2
       },
       "Cake/queryChanges with filter on join with match looks right"
@@ -1140,7 +1139,7 @@ subtest "filters on joined tables" => sub {
             'recipeId' => $secret1_recipe_id,
             'recipe.is_delicious' => jfalse, # But these are delicious!
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
         },
       ],
     ]);
@@ -1156,7 +1155,7 @@ subtest "filters on joined tables" => sub {
         'canCalculateUpdates' => jtrue,
         'position' => 0,
         'sort' => [
-          'type asc',
+          { property => 'type', isAscending => jtrue },
         ],
         'state' => $state,
         'total' => 0,
@@ -1171,7 +1170,7 @@ subtest "filters on joined tables" => sub {
             recipeId => $secret1_recipe_id,
             'recipe.is_delicious' => jfalse,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
           sinceState => $state - 3,
         },
       ],
@@ -1209,7 +1208,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             recipeId => $secret2_recipe_id,
             'recipe.is_delicious' => jfalse,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
           sinceState => $state - 3,
         },
       ],
@@ -1239,7 +1238,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'oldState' => $state - 3,
         'removed' => [],
         'sort' => [
-          'type asc'
+          { property => 'type', isAscending => jtrue },
         ],
         'total' => 3,
       },
@@ -1257,7 +1256,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             recipeId => $secret2_recipe_id,
             'recipe.is_delicious' => jtrue,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
           sinceState => $state - 3,
         },
       ],
@@ -1275,7 +1274,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'oldState' => $state - 3,
         'removed' => [],
         'sort' => [
-          'type asc'
+          { property => 'type', isAscending => jtrue },
         ],
         'total' => 0,
       },
@@ -1290,7 +1289,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             recipeId => $secret2_recipe_id,
             'recipe.is_delicious' => jtrue,
           },
-          sort => [ 'type asc' ],
+          sort => [{ property => 'type', isAscending => jtrue }],
           sinceState => $state - 2,
         },
       ],
@@ -1308,7 +1307,7 @@ subtest "differ boolean comparison when db row is false" => sub {
         'oldState' => $state - 2,
         'removed' => [],
         'sort' => [
-          'type asc'
+          { property => 'type', isAscending => jtrue },
         ],
         'total' => 0,
       },
@@ -1337,7 +1336,7 @@ subtest "distinct rows only" => sub {
   $res = $jmap_tester->request([
     [
       'Cake/query' => {
-        sort => [ 'id asc' ],
+        sort => [{ property => 'id', isAscending => jtrue }],
       },
     ],
   ]);
@@ -1355,7 +1354,7 @@ subtest "distinct rows only" => sub {
   $res = $jmap_tester->request([
     [
       'Cake/queryChanges' => {
-        sort => [ 'id asc' ],
+        sort => [{ property => 'id', isAscending => jtrue }],
         sinceState => 0,
       },
     ],
