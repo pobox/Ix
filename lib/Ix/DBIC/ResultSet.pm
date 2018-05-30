@@ -1042,7 +1042,7 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
     my @res = $ctx->result("$key/query" => {
       filter       => $orig_filter,
       sort         => $orig_sort,
-      state        => $hms,
+      queryState   => $hms,
       total        => $total,
       position     => $arg->{position} // 0,
       ids          => [ map {; "" . $_->{id} } @items ],
@@ -1063,14 +1063,14 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
 
     my $schema = $ctx->schema;
 
-    my $since_state = $arg->{sinceState};
+    my $since_state = $arg->{sinceQueryState};
 
     my $limit = $arg->{maxChanges};
     if (defined $limit && ( $limit !~ /^[0-9]+\z/ || $limit == 0 )) {
       return $ctx->error(invalidArguments => { description => "invalid maxChanges" });
     }
 
-    return $ctx->error(invalidArguments => { description => "no sinceState given" })
+    return $ctx->error(invalidArguments => { description => "no sinceQueryState given" })
       unless defined $since_state;
 
     my $hms = $ctx->state->highest_modseq_for($key);
@@ -1081,6 +1081,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       or
       $since_state < $lms
     ) {
+      warn "since_state is $since_state, hms is $hms";
       return $ctx->error(cannotCalculateChanges => {});
     }
 
@@ -1102,14 +1103,14 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       },
     )->search({ 'me.isActive' => 1 })->count;
 
-    if ($arg->{sinceState} == $hms) {
+    if ($arg->{sinceQueryState} == $hms) {
       # Nothing changed!  But we still promise to return the total,
       # unfortunately, so we get it. -- rjbs, 2016-04-13
       return $ctx->result("$key/queryChanges" => {
         filter => $orig_filter,
         sort   => $orig_sort,
-        oldState => "$since_state",
-        newState => "$since_state",
+        oldQueryState => "$since_state",
+        newQueryState => "$since_state",
         total    => $total,
         removed  => [ ],
         added    => [ ],
@@ -1223,8 +1224,8 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     return $ctx->result("$key/queryChanges" => {
       filter => $orig_filter,
       sort   => $orig_sort,
-      oldState => "" . $since_state,
-      newState => "" . $hms,
+      oldQueryState => "" . $since_state,
+      newQueryState => "" . $hms,
       total    => $total,
       removed  => \@removed,
       added    => \@added,

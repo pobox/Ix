@@ -66,9 +66,9 @@ ok($secret2_recipe_id, 'created a marble recipe');
   jcmp_deeply(
     $res->single_sentence->arguments,
     superhashof({
-      ids     => [],
-      state   => 0,
-      total   => 0,
+      ids        => [],
+      queryState => 0,
+      total      => 0,
     }),
     "ix_get_list works with no state rows"
   );
@@ -80,7 +80,7 @@ ok($secret2_recipe_id, 'created a marble recipe');
           recipeId => $secret1_recipe_id,
         },
         sort => [{ property => 'created', isAscending => jtrue }],
-        sinceState => 0,
+        sinceQueryState => 0,
       },
     ],
   ]);
@@ -91,8 +91,8 @@ ok($secret2_recipe_id, 'created a marble recipe');
       added    => [],
       removed  => [],
       total    => 0,
-      newState => 0,
-      oldState => 0,
+      newQueryState => 0,
+      oldQueryState => 0,
     }),
     "ix_get_list_update works with no state rows"
   );
@@ -165,7 +165,7 @@ $state =~ s/-\d+//;
       'sort' => [
         { property => 'type', isAscending => jtrue },
       ],
-      'state' => $state,
+      'queryState' => $state,
       'total' => 3,
     },
     "Cake/query with sort+filter looks right"
@@ -201,7 +201,7 @@ $state =~ s/-\d+//;
       'sort' => [
         { property => 'type', isAscending => jfalse }
       ],
-      'state' => $state,
+      'queryState' => $state,
       'total' => 3,
     },
     "Cake/query with sort+filter looks right (reverse sort)"
@@ -282,7 +282,7 @@ subtest "custom condition builder" => sub {
         { property => 'type',        isAscending => jtrue },
         { property => 'layer_count', isAscending => jtrue },
       ],
-      'state' => $state,
+      'queryState' => $state,
       'total' => 3,
     },
     "Cake/query with multi-sort + filter looks right"
@@ -317,7 +317,7 @@ subtest "custom condition builder" => sub {
         { property => 'type',        isAscending => jtrue },
         { property => 'layer_count', isAscending => jfalse },
       ],
-      'state' => $state,
+      'queryState' => $state,
       'total' => 3,
     },
     "Cake/query with multi-sort + filter looks right"
@@ -350,7 +350,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => undef,
-      'state' => $state,
+      'queryState' => $state,
       'total' => 1,
     },
     "Cake/query with no sort, multi-filter"
@@ -387,7 +387,7 @@ subtest "custom condition builder" => sub {
         'canCalculateUpdates' => jtrue,
         'position' => $p-1,
         'sort' => [],
-        'state' => $state,
+        'queryState' => $state,
         'total' => 3,
       },
       "Cake/query with limit 1, position $p looks right (got cake $cid)"
@@ -427,7 +427,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => undef,
-      'state' => $state,
+      'queryState' => $state,
       'total' => 1,
     },
     "'Cake/query' with backrefs"
@@ -472,7 +472,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => jtrue,
       'position' => 0,
       'sort' => undef,
-      'state' => $state,
+      'queryState' => $state,
       'total' => 1,
     },
     "Cake/query with backrefs"
@@ -582,7 +582,7 @@ subtest "custom condition builder" => sub {
       'sort' => [
         { property => 'type', isAscending => jtrue },
       ],
-      'state' => $state,
+      'queryState' => $state,
       'total' => 2,
     },
     "Cake/query doesn't show destroyed cakes"
@@ -599,7 +599,7 @@ subtest "custom condition builder" => sub {
           recipeId => $secret1_recipe_id,
         },
         sort => [{ property => 'type', isAscending => jtrue }],
-        sinceState => $state - 2,
+        sinceQueryState => $state - 2,
       },
     ],
   ]);
@@ -620,8 +620,8 @@ subtest "custom condition builder" => sub {
       'filter' => {
         'recipeId' => $secret1_recipe_id,
       },
-      'newState' => jstr($state),
-      'oldState' => jstr($state-2),
+      'newQueryState' => jstr($state),
+      'oldQueryState' => jstr($state-2),
       'removed' => [],
       'sort' => [
         { property => 'type', isAscending => jtrue },
@@ -639,7 +639,7 @@ subtest "custom condition builder" => sub {
           recipeId => $secret1_recipe_id,
         },
         sort => [{ property => 'type', isAscending => jtrue }],
-        sinceState => $state - 1,
+        sinceQueryState => $state - 1,
       },
     ],
   ]);
@@ -651,8 +651,8 @@ subtest "custom condition builder" => sub {
       'filter' => {
         'recipeId' => $secret1_recipe_id,
       },
-      'newState' => jstr($state),
-      'oldState' => jstr($state-1),
+      'newQueryState' => jstr($state),
+      'oldQueryState' => jstr($state-1),
       'removed' => [
         $cake_id{chocolate1},
       ],
@@ -680,14 +680,14 @@ subtest "custom condition builder" => sub {
     $res->single_sentence->arguments,
     {
       'type' => 'invalidArguments',
-      'description' => 'no sinceState given',
+      'description' => 'no sinceQueryState given',
     },
-    "No sinceState - correct error",
+    "No sinceQueryState - correct error",
   );
 }
 
 {
-  # sinceState up to date
+  # sinceQueryState up to date
   $res = $jmap_tester->request([
     [
       'Cake/queryChanges' => {
@@ -695,7 +695,7 @@ subtest "custom condition builder" => sub {
           recipeId => $secret1_recipe_id,
         },
         sort => [{ property => 'type', isAscending => jtrue }],
-        sinceState => $state,
+        sinceQueryState => $state,
       },
     ],
   ]);
@@ -707,8 +707,8 @@ subtest "custom condition builder" => sub {
       'filter' => {
         'recipeId' => $secret1_recipe_id,
       },
-      'newState' => jstr($state),
-      'oldState' => jstr($state),
+      'newQueryState' => jstr($state),
+      'oldQueryState' => jstr($state),
       'removed' => [],
       'sort'    => [{ property => 'type', isAscending => jtrue }],
       'total' => 2
@@ -747,7 +747,7 @@ subtest "custom condition builder" => sub {
           recipeId => $secret1_recipe_id,
         },
         sort => [{ property => 'type', isAscending => jtrue }],
-        sinceState => $state-1,
+        sinceQueryState => $state-1,
       },
     ],
   ]);
@@ -765,8 +765,8 @@ subtest "custom condition builder" => sub {
       'filter' => {
         'recipeId' => $secret1_recipe_id,
       },
-      'newState' => $state,
-      'oldState' => $state-1,
+      'newQueryState' => $state,
+      'oldQueryState' => $state-1,
       'removed' => [
         $cake_id{pb1},
       ],
@@ -792,7 +792,7 @@ subtest "custom condition builder" => sub {
         filter => {
           recipeId => 'secret',
         },
-        sinceState => $state-1,
+        sinceQueryState => $state-1,
       },
     ],
   ]);
@@ -850,7 +850,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => JSON::MaybeXS::JSON->true,
       'position' => 0,
       'sort' => undef,
-      'state' => $state,
+      'queryState' => $state,
       'total' => 1,
     },
     "Cake/query with properties in backref"
@@ -900,7 +900,7 @@ subtest "custom condition builder" => sub {
       'canCalculateUpdates' => JSON::MaybeXS::JSON->true,
       'position' => 0,
       'sort' => undef,
-      'state' => $state,
+      'queryState' => $state,
       'total' => 1,
     },
     "Cake/query with explicit CakeRecipe/get"
@@ -947,7 +947,7 @@ subtest 'custom differ, and no required filters' => sub {
       "No cookies match our filter yet"
     ) or diag explain $cl_res->as_stripped_triples;
 
-    my $base_state = $cl_res->single_sentence->arguments->{state};
+    my $base_state = $cl_res->single_sentence->arguments->{queryState};
     ok(defined $base_state, 'got cookie state');
 
     push @states, $base_state;
@@ -981,7 +981,7 @@ subtest 'custom differ, and no required filters' => sub {
     my $clu_res = $jmap_tester->request([[
       'Cookie/queryChanges' => {
         %cl_args,
-        sinceState => $states[0],
+        sinceQueryState => $states[0],
       },
     ]]);
 
@@ -1002,7 +1002,7 @@ subtest 'custom differ, and no required filters' => sub {
       "Got two cookies out of three"
     ) or diag explain $clu_res->as_stripped_triples;
 
-    my $state = $clu_res->single_sentence->arguments->{newState};
+    my $state = $clu_res->single_sentence->arguments->{newQueryState};
     ok(defined $state, 'got next cookie state')
       or diag explain $clu_res->as_stripped_triples;
 
@@ -1033,7 +1033,7 @@ subtest 'custom differ, and no required filters' => sub {
     my $clu_res = $jmap_tester->request([[
       'Cookie/queryChanges' => {
         %cl_args,
-        sinceState => $states[-1],
+        sinceQueryState => $states[-1],
       },
     ]]);
 
@@ -1085,7 +1085,7 @@ subtest "filters on joined tables" => sub {
         'canCalculateUpdates' => jtrue,
         'position' => 0,
         'sort'  => [{ property => 'type', isAscending => jtrue }],
-        'state' => $state,
+        'queryState' => $state,
         'total' => 2,
       },
       "Cake/query with filter on join with match looks right"
@@ -1099,7 +1099,7 @@ subtest "filters on joined tables" => sub {
             'recipe.is_delicious' => jtrue,
           },
           sort => [{ property => 'type', isAscending => jtrue }],
-          sinceState => $state - 3,
+          sinceQueryState => $state - 3,
         },
       ],
     ]);
@@ -1121,8 +1121,8 @@ subtest "filters on joined tables" => sub {
           'recipeId' => $secret1_recipe_id,
           'recipe.is_delicious' => jtrue,
         },
-        'newState' => $state,
-        'oldState' => $state - 3,
+        'newQueryState' => $state,
+        'oldQueryState' => $state - 3,
         'removed' => [],
         'sort'  => [{ property => 'type', isAscending => jtrue }],
         'total' => 2
@@ -1157,7 +1157,7 @@ subtest "filters on joined tables" => sub {
         'sort' => [
           { property => 'type', isAscending => jtrue },
         ],
-        'state' => $state,
+        'queryState' => $state,
         'total' => 0,
       },
       "Cake/query with filter on join no match looks right"
@@ -1171,7 +1171,7 @@ subtest "filters on joined tables" => sub {
             'recipe.is_delicious' => jfalse,
           },
           sort => [{ property => 'type', isAscending => jtrue }],
-          sinceState => $state - 3,
+          sinceQueryState => $state - 3,
         },
       ],
     ]);
@@ -1182,8 +1182,8 @@ subtest "filters on joined tables" => sub {
         added    => [],
         removed  => [],
         total    => 0,
-        newState => $state,
-        oldState => $state - 3,
+        newQueryState => $state,
+        oldQueryState => $state - 3,
         filter => {
           recipeId => $secret1_recipe_id,
           'recipe.is_delicious' => jfalse,
@@ -1209,7 +1209,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             'recipe.is_delicious' => jfalse,
           },
           sort => [{ property => 'type', isAscending => jtrue }],
-          sinceState => $state - 3,
+          sinceQueryState => $state - 3,
         },
       ],
     ]);
@@ -1234,8 +1234,8 @@ subtest "differ boolean comparison when db row is false" => sub {
           'recipeId' => $secret2_recipe_id,
           'recipe.is_delicious' => jfalse,
         },
-        'newState' => $state,
-        'oldState' => $state - 3,
+        'newQueryState' => $state,
+        'oldQueryState' => $state - 3,
         'removed' => [],
         'sort' => [
           { property => 'type', isAscending => jtrue },
@@ -1257,7 +1257,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             'recipe.is_delicious' => jtrue,
           },
           sort => [{ property => 'type', isAscending => jtrue }],
-          sinceState => $state - 3,
+          sinceQueryState => $state - 3,
         },
       ],
     ]);
@@ -1270,8 +1270,8 @@ subtest "differ boolean comparison when db row is false" => sub {
           'recipeId' => $secret2_recipe_id,
           'recipe.is_delicious' => jtrue,
         },
-        'newState' => $state,
-        'oldState' => $state - 3,
+        'newQueryState' => $state,
+        'oldQueryState' => $state - 3,
         'removed' => [],
         'sort' => [
           { property => 'type', isAscending => jtrue },
@@ -1290,7 +1290,7 @@ subtest "differ boolean comparison when db row is false" => sub {
             'recipe.is_delicious' => jtrue,
           },
           sort => [{ property => 'type', isAscending => jtrue }],
-          sinceState => $state - 2,
+          sinceQueryState => $state - 2,
         },
       ],
     ]);
@@ -1303,8 +1303,8 @@ subtest "differ boolean comparison when db row is false" => sub {
           'recipeId' => $secret2_recipe_id,
           'recipe.is_delicious' => jtrue,
         },
-        'newState' => $state,
-        'oldState' => $state - 2,
+        'newQueryState' => $state,
+        'oldQueryState' => $state - 2,
         'removed' => [],
         'sort' => [
           { property => 'type', isAscending => jtrue },
@@ -1355,7 +1355,7 @@ subtest "distinct rows only" => sub {
     [
       'Cake/queryChanges' => {
         sort => [{ property => 'id', isAscending => jtrue }],
-        sinceState => 0,
+        sinceQueryState => 0,
       },
     ],
   ]);
@@ -1381,7 +1381,7 @@ subtest "tooManyChanges" => sub {
     my $res = $jmap_tester->request([[
       'Cake/queryChanges' => {
         filter => { recipeId => $secret1_recipe_id, },
-        sinceState => 1,
+        sinceQueryState => 1,
         maxChanges => 100,
       },
     ]]);
@@ -1393,14 +1393,14 @@ subtest "tooManyChanges" => sub {
         removed => [ ignore(), ignore() ],
       }),
       'got a good response, with both added/removed elements'
-    );
+    ) or diag explain $res->as_stripped_triples;
   };
 
   subtest "Exact amount of changes" => sub {
     my $res = $jmap_tester->request([[
       'Cake/queryChanges' => {
         filter => { recipeId => $secret1_recipe_id, },
-        sinceState => 1,
+        sinceQueryState => 1,
         maxChanges => 3,
       },
     ]]);
@@ -1419,7 +1419,7 @@ subtest "tooManyChanges" => sub {
     my $res = $jmap_tester->request([[
       'Cake/queryChanges' => {
         filter => { recipeId => $secret1_recipe_id, },
-        sinceState => 1,
+        sinceQueryState => 1,
         maxChanges => 2,
       },
     ]]);
@@ -1439,7 +1439,7 @@ subtest "custom cake differ" => sub {
         recipeId => $secret1_recipe_id,
         isLayered             => jtrue,
         'recipe.is_delicious' => jtrue,
-      }, sinceState => 0 }
+      }, sinceQueryState => 0 }
     ],
   ]);
   ok($res->http_response->is_success, 'call succeeded');
@@ -1457,10 +1457,10 @@ subtest "we do not promote undef sort or filter" => sub {
 
       jcmp_deeply($list->arguments->{filter}, $value, "Foo/query filter");
 
-      my $state = $list->arguments->{state};
+      my $state = $list->arguments->{queryState};
 
       my $listup_res = $jmap_tester->request([
-        [ 'Cookie/queryChanges' => { sinceState => $state, filter => $value } ]
+        [ 'Cookie/queryChanges' => { sinceQueryState => $state, filter => $value } ]
       ]);
 
       my $listup = $listup_res->single_sentence('Cookie/queryChanges');
