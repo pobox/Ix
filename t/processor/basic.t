@@ -567,7 +567,7 @@ subtest "invalid sinceState" => sub {
         'b',
       ],
     ],
-    "a getFoos call backed by the database",
+    "a Foo/get call backed by the database",
   ) or diag explain($res);
 
   ok($res->[1][1]{list}[0]{baked_at}->$_isa('DateTime'), 'got a dt object');

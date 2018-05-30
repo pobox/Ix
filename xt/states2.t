@@ -132,7 +132,7 @@ my $c1f = Path::Tiny->tempfile;
 my $child1 = with_child {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'first', baked_at => undef } },
       },
     ],
@@ -147,7 +147,7 @@ my $c2f = Path::Tiny->tempfile;
 my $child2 = with_child {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'second', baked_at => undef } },
       },
     ],
@@ -184,19 +184,19 @@ is($signaled, 2, 'both children completed');
 
 # This should give us one cookie, state increased by 1
 my $res = $jmap_tester->request([
-  [ getCookies => {} ],
+  [ 'Cookie/get' => {} ],
 ]);
 
 my $fail = 0;
 
 is(
-  $res->single_sentence('cookies')->arguments->{list}->@*,
+  $res->single_sentence('Cookie/get')->arguments->{list}->@*,
   1,
   'only created one cookie'
 ) or $fail++;
 
 is(
-  $res->single_sentence('cookies')->arguments->{state},
+  $res->single_sentence('Cookie/get')->arguments->{state},
   1,
   'state only incremented once'
 ) or $fail++;
@@ -217,7 +217,7 @@ my $res2type = $res2->{methodResponses}[0][0];
 
 jcmp_deeply(
   [ $res1type, $res2type ],
-  set('cookiesSet', 'error'),
+  set('Cookie/set', 'error'),
   'got one success, one fail'
 );
 

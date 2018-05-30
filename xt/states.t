@@ -85,7 +85,7 @@ END {
 # Get some initial state
 my $res = $jmap_tester->request([
   [
-    setCookies => {
+    'Cookie/set' => {
       create => { raw => { type => 'dough', baked_at => undef } },
     },
   ],
@@ -111,7 +111,7 @@ my $state = $res->single_sentence->arguments->{newState};
 ok(defined($state), 'got new state');
 
 # Start 3 processes, 2 with the same accountId. Of the latter 2, have one
-# do a setCakes then setCookies, and the other the reverse. This makes
+# do a Cake/set then Cookie/set, and the other the reverse. This makes
 # sure we don't deadlock by holding onto a lock for too long. All calls
 # should succeed and the state should be bumped twice in the one account.
 
@@ -149,12 +149,12 @@ $signaled = 0;
 my $child1 = with_child {
   my $res = $jmap_tester->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'first', baked_at => undef } },
       },
     ],
     [
-      setCakes   => {
+      'Cake/set'   => {
         create => { raw => { type => 'first', layer_count => 4, recipeId => $account{recipes}{1} } },
       },
     ],
@@ -172,11 +172,11 @@ my $child1 = with_child {
 my $child2 = with_child {
   my $res = $jmap_tester->request([
     [
-      setCakes   => {
+      'Cake/set'   => {
         create => { raw => { type => 'second', layer_count => 4, recipeId => $account{recipes}{1} } },
       },
     ], [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'second', baked_at => undef } },
       },
     ],
@@ -194,12 +194,12 @@ my $child2 = with_child {
 my $child3 = with_child {
   my $res = $jmap_tester2->request([
     [
-      setCookies => {
+      'Cookie/set' => {
         create => { raw => { type => 'other', baked_at => undef } },
       },
     ],
     [
-      setCakes   => {
+      'Cake/set'   => {
         create => { raw => { type => 'other', layer_count => 4, recipeId => $account{recipes}{1} } },
       },
     ],
@@ -243,7 +243,7 @@ is($signaled, 3, 'children report they are complete');
 
 # This should give us two cookies, state increased by 1
 $res = $jmap_tester->request([
-  [ getCookieUpdates => {
+  [ 'Cookie/changes' => {
     sinceState   => $state,
   } ],
 ]);
@@ -257,7 +257,7 @@ is (@changed, 2, 'two cookies created')
 
 # This should give us one cookie, state increased by 1
 $res = $jmap_tester->request([
-  [ getCookieUpdates => {
+  [ 'Cookie/changes' => {
     sinceState  => $state + 1,
   } ],
 ]);

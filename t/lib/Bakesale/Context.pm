@@ -25,7 +25,7 @@ package Bakesale::Context {;
     writer   => '_set_user',
     init_arg => undef,
     lazy     => 1,
-    clearer  => '_clear_user', # trigger this after setUsers, surely?
+    clearer  => '_clear_user', # trigger this after User/set, surely?
     default  => sub ($self) {
       return $self->schema->resultset('User')->find($self->userId);
     },
