@@ -16,6 +16,7 @@ my $no_updates = any({}, undef);
 
 my $Bakesale = Bakesale->new;
 \my %account = Bakesale::Test->load_trivial_account($Bakesale->schema_connection);
+my $accountId = $account{accounts}{rjbs};
 
 my $ctx = $Bakesale->get_context({
   userId => $account{users}{rjbs},
@@ -115,6 +116,7 @@ my $ctx = $Bakesale->get_context({
       [ 'Cookie/changes' => ignore(), 'a' ],
       [
         'Cookie/get' => {
+          accountId => $accountId,
           notFound => undef,
           state => 8,
           list  => [
@@ -170,6 +172,7 @@ my @created_ids;
     [
       [
         'Cookie/set' => superhashof({
+          accountId => ignore(),
           oldState => 8,
           newState => 9,
 
@@ -204,7 +207,7 @@ my @created_ids;
   @created_ids = map {; $_->{id} } values %{ $res->[0][1]{created} };
 
   my @rows = $ctx->schema->resultset('Cookie')->search(
-    { accountId => $account{accounts}{rjbs} },
+    { accountId => $accountId },
     {
       order_by => 'baked_at',
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
@@ -226,7 +229,7 @@ my @created_ids;
   ) or diag explain(\@rows);
 
   my $state = $ctx->schema->resultset('State')->search({
-    accountId => $account{accounts}{rjbs},
+    accountId => $accountId,
     type => 'Cookie',
   })->first;
 
@@ -243,6 +246,7 @@ my @created_ids;
     [
       [
         'Cookie/changes' => {
+          accountId => ignore(),
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -316,6 +320,7 @@ subtest "invalid sinceState" => sub {
     [
       [
         'Cookie/changes' => {
+          accountId => ignore(),
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -397,7 +402,7 @@ subtest "invalid sinceState" => sub {
   ) or diag explain($res);
 
   my $state = $ctx->schema->resultset('State')->search({
-    accountId => $account{accounts}{rjbs},
+    accountId => $accountId,
     type => 'Cookie',
   })->first;
 
@@ -479,6 +484,7 @@ subtest "invalid sinceState" => sub {
       [ 'Cookie/changes' => ignore(), 'a' ],
       [
         'Cookie/get' => {
+          accountId => ignore(),
           notFound => undef,
           state => 10,
           list  => set(
@@ -558,6 +564,7 @@ subtest "invalid sinceState" => sub {
       [ 'Cookie/changes' => ignore(), 'a' ],
       [
         'Cookie/get' => {
+          accountId => ignore(),
           notFound => undef,
           state => 11,
           list  => [
@@ -582,7 +589,7 @@ subtest "invalid sinceState" => sub {
   my $res = $ctx->process_request([
     [
       'Cookie/set' => {
-        accountId => $account,
+        accountId => $accountId,
         ifInState => 11,
         create    => {
           yellow => { type => 'shortbread', },

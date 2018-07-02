@@ -117,6 +117,7 @@ sub ix_get ($self, $ctx, $arg = {}) {
       $arg,
       [
         $ctx->result($rclass->ix_type_key . "/get" => {
+          accountId => $ctx->accountId,
           state => $rclass->ix_state_string($ctx->state),
           list  => \@rows,
           notFound => (@not_found ? \@not_found : undef),
@@ -157,6 +158,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
 
     if ($statecmp->is_in_sync) {
       return $ctx->result($res_type => {
+        accountId => $ctx->accountId,
         oldState => "$since",
         newState => "$since",
         hasMoreUpdates => JSON::MaybeXS::JSON->false(), # Gross. -- rjbs, 2017-02-13
@@ -249,6 +251,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
     @changed = uniq @changed;
 
     my @return = $ctx->result($res_type => {
+      accountId => $ctx->accountId,
       oldState => "$since",
       newState => ($hasMoreUpdates
                 ? $rclass->ix_highest_state($since, \@rows)
@@ -980,6 +983,7 @@ sub ix_set ($self, $ctx, $arg = {}) {
       result_type => "$type_key/set",
       old_state => $curr_state,
       new_state => $rclass->ix_state_string($state),
+      accountId => $ctx->accountId,
       %result,
     }) ];
 
@@ -1040,6 +1044,7 @@ sub ix_get_list ($self, $ctx, $arg = {}) {
     my $hms = "" . $ctx->state->highest_modseq_for($key);
 
     my @res = $ctx->result("$key/query" => {
+      accountId    => $ctx->accountId,
       filter       => $orig_filter,
       sort         => $orig_sort,
       queryState   => $hms,
@@ -1107,6 +1112,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
       # Nothing changed!  But we still promise to return the total,
       # unfortunately, so we get it. -- rjbs, 2016-04-13
       return $ctx->result("$key/queryChanges" => {
+        accountId => $ctx->accountId,
         filter => $orig_filter,
         sort   => $orig_sort,
         oldQueryState => "$since_state",
@@ -1222,6 +1228,7 @@ sub ix_get_list_updates ($self, $ctx, $arg = {}) {
     }
 
     return $ctx->result("$key/queryChanges" => {
+      accountId => $ctx->accountId,
       filter => $orig_filter,
       sort   => $orig_sort,
       oldQueryState => "" . $since_state,

@@ -35,6 +35,8 @@ package Ix::Result::FoosSet {
 
   use namespace::autoclean;
 
+  has accountId   => (is => 'ro', isa => 'Str', required => 1);
+
   has result_type => (is => 'ro', isa => 'Str', required => 1);
 
   has result_arguments => (
@@ -42,6 +44,7 @@ package Ix::Result::FoosSet {
     lazy => 1,
     default => sub ($self) {
       my %prop = (
+        accountId => $self->accountId,
         oldState => $self->old_state,
         newState => $self->new_state,
 

@@ -25,6 +25,8 @@ my $no_updates = any({}, undef);
 my ($app, $jmap_tester) = Bakesale::Test->new_test_app_and_tester;
 \my %account = Bakesale::Test->load_trivial_account($app->processor->schema_connection);
 
+my $accountId = $account{accounts}{rjbs};
+
 $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
 
 {
@@ -140,6 +142,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
       [ 'Cookie/changes' => ignore() ],
       [
         'Cookie/get' => {
+          accountId => $accountId,
           notFound => undef,
           state => 8,
           list  => [
@@ -151,7 +154,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
       ],
     ],
     "a Foo/get call backed by the database",
-  );
+  ) or diag explain $res->as_stripped_triples;
 }
 
 {
@@ -178,6 +181,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
     [
       [
         'Cookie/get' => {
+          accountId => $accountId,
           notFound => [ $does_not_exist ],
           state => 8,
           list  => [
@@ -348,6 +352,7 @@ my @created_ids;
     [
       [
         'Cookie/changes' => {
+          accountId => $accountId,
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -405,6 +410,7 @@ subtest "invalid sinceState" => sub {
     [
       [
         'Cookie/changes' => {
+          accountId => $accountId,
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
@@ -865,6 +871,7 @@ subtest "timestamptz field validations" => sub {
     [
       [
         'Cookie/set' => superhashof({
+          accountId => ignore(),
           oldState => ignore(),
           newState => code(sub { $state = $_[0]; 1}),
           created => {
@@ -915,6 +922,7 @@ subtest "timestamptz field validations" => sub {
       [ 'Cookie/changes' => ignore() ],
       [
         'Cookie/get' => {
+          accountId => ignore(),
           notFound => undef,
           state => $state,
           list  => bag(
@@ -955,6 +963,7 @@ subtest "timestamptz field validations" => sub {
     [
       [
         'Cookie/set' => superhashof({
+          accountId => ignore(),
           oldState => $state,
           newState => $state + 1,
           updated => {
@@ -1001,6 +1010,7 @@ subtest "timestamptz field validations" => sub {
       [ 'Cookie/changes' => ignore() ],
       [
         'Cookie/get' => {
+          accountId => ignore(),
           notFound => undef,
           state => $state,
           list  => set(
@@ -1227,6 +1237,7 @@ subtest "various string id tests" => sub {
       [
         'Cake/set',
         {
+          accountId => ignore(),
           'created' => {},
           'destroyed' => [],
           'newState' => ignore(),
@@ -1259,6 +1270,7 @@ subtest "various string id tests" => sub {
       [
         'Cake/get',
         {
+          accountId => ignore(),
           'list' => [],
           'notFound' => [
             'bad'
@@ -1589,6 +1601,7 @@ subtest "ix_created test" => sub {
     [
       [
         'Cookie/set' => superhashof({
+          accountId => ignore(),
           oldState => 0,
           newState => 1,
 
@@ -2058,7 +2071,7 @@ subtest "lock timeout" => sub {
   my $res = $schema->txn_do(sub {
     my $lock = $schema->resultset('State')->search(
       {
-        accountId => $account{accounts}{rjbs},
+        accountId => $accountId,
         type      => 'Cookie',
       }, {
         for => 'update',
@@ -2239,7 +2252,7 @@ subtest "is_immutable" => sub {
     my $sys_res = $ctx->process_request([
       [
         'Biscuit/set' => {
-          accountId => $account{accounts}{rjbs},
+          accountId => $accountId,
           update    => { $obj->{id} => { size => 'x-large' } }
         },
         'x',
