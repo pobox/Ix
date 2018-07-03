@@ -125,7 +125,7 @@ $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
     [
       'Cookie/get' => {
         properties => [ qw(type) ],
-        '#ids' => mkref('a', 'Cookie/changes', '/changed'),
+        '#ids' => mkref('a', 'Cookie/changes', '/created'),
       }, 'b',
     ],
   ]);
@@ -356,8 +356,9 @@ my @created_ids;
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
-          changed  => bag($account{cookies}{1}, @created_ids),
-          removed  => bag($account{cookies}{4}),
+          created  => bag(@created_ids),
+          updated  => [ $account{cookies}{1} ],
+          destroyed => bag($account{cookies}{4}),
         },
       ],
     ],
@@ -398,7 +399,8 @@ subtest "invalid sinceState" => sub {
 
   my $res = $jmap_tester->request([
     [ 'Cookie/changes' => { sinceState => 8 }, 'a' ],
-    [ 'Cookie/get' => { '#ids' => mkref(qw(a Cookie/changes /changed)) }, 'b' ],
+    [ 'Cookie/get' => { '#ids' => mkref(qw(a Cookie/changes /created)) }, 'b' ],
+    [ 'Cookie/get' => { '#ids' => mkref(qw(a Cookie/changes /updated)) }, 'c' ],
   ]);
 
   my $get_payloads = $jmap_tester->strip_json_types(
@@ -414,14 +416,21 @@ subtest "invalid sinceState" => sub {
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
-          changed  => bag($account{cookies}{1}, @created_ids),
-          removed  => bag($account{cookies}{4}),
+          created   => bag(@created_ids),
+          updated   => [ $account{cookies}{1} ],
+          destroyed => bag($account{cookies}{4}),
         },
       ],
       [
         'Cookie/get' => {
           $get_payloads->%*,
-          list => bag( $get_payloads->{list}->@* ),
+          list => bag( $get_payloads->{list}->@[1..2] ),
+        },
+      ],
+      [
+        'Cookie/get' => {
+          $get_payloads->%*,
+          list => bag( $get_payloads->{list}->[0] ),
         },
       ],
     ],
@@ -908,7 +917,7 @@ subtest "timestamptz field validations" => sub {
     [
       'Cookie/get' => {
         properties => [ qw(type baked_at expires_at) ],
-        '#ids' => mkref(qw( a Cookie/changes /changed )),
+        '#ids' => mkref(qw( a Cookie/changes /created )),
       },
       'b',
     ],
@@ -996,7 +1005,7 @@ subtest "timestamptz field validations" => sub {
     [
       'Cookie/get' => {
         properties => [ qw(type baked_at expires_at) ],
-        '#ids' => mkref(qw(a Cookie/changes /changed)),
+        '#ids' => mkref(qw(a Cookie/changes /created)),
       },
       'b',
     ],
@@ -1572,7 +1581,7 @@ subtest "ix_created test" => sub {
     [
       'Cookie/get' => {
         properties => [ qw(type) ],
-        '#ids' => mkref(qw(a Cookie/changes /changed)),
+        '#ids' => mkref(qw(a Cookie/changes /created)),
       },
       'b',
     ],
@@ -1581,7 +1590,8 @@ subtest "ix_created test" => sub {
   my $args = $res->sentence(0)->arguments;
   is($args->{newState}, 0, "newState is right");
   is($args->{oldState}, 0, "oldState is right");
-  is_deeply($args->{changed}, [], 'no changes');
+  is_deeply($args->{created}, [], 'no creates');
+  is_deeply($args->{updated}, [], 'no updates');
 
   # Add some cookies, ensure ifInState works
   $res = $jmap_tester->request([
@@ -1624,7 +1634,7 @@ subtest "ix_created test" => sub {
   ]);
 
   cmp_deeply(
-    $res->as_stripped_triples->[0][1]{changed},
+    $res->as_stripped_triples->[0][1]{created},
     set(map { "$_" } @created_ids),
     "'Cookie/changes' with state of 0 works"
   );
@@ -1635,7 +1645,7 @@ subtest "ix_created test" => sub {
     [
       'Cookie/get' => {
         properties => [ qw(type) ],
-        '#ids' => mkref(qw(a Cookie/changes /changed)),
+        '#ids' => mkref(qw(a Cookie/changes /created)),
       },
       'b',
     ],
@@ -1658,7 +1668,8 @@ subtest "ix_created test" => sub {
   $args = $res->single_sentence->arguments;
   is($args->{newState}, "0-0", "newState is right");
   is($args->{oldState}, "0-0", "oldState is right");
-  is_deeply($args->{changed}, [], 'no changes');
+  is_deeply($args->{created}, [], 'no creates');
+  is_deeply($args->{updated}, [], 'no updates');
 
   # Put this back
   $jmap_tester->_set_cookie('bakesaleUserId', $account{users}{rjbs});
@@ -1723,13 +1734,13 @@ subtest "deleted entites in get*Updates calls" => sub {
   ok($destroy, 'got destroyed cookie state');
 
   for my $test (
-    [ $start,  { changed => [     ], removed => [     ] },
+    [ $start,  { created => [], updated => [], destroyed => [     ] },
       "create/update/destroy in update window not seen",
     ],
-    [ $create, { changed => [     ], removed => [ $id ] },
+    [ $create, { created => [], updated => [], destroyed => [ $id ] },
       "update/destroy in window shows destroy but no update",
     ],
-    [ $update, { changed => [     ], removed => [ $id ] },
+    [ $update, { created => [], updated => [], destroyed => [ $id ] },
       "destroy in window shows destroy but no update",
     ],
   ) {

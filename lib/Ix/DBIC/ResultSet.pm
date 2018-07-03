@@ -162,8 +162,9 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
         oldState => "$since",
         newState => "$since",
         hasMoreUpdates => JSON::MaybeXS::JSON->false(), # Gross. -- rjbs, 2017-02-13
-        changed => [],
-        removed => [],
+        created => [],
+        updated => [],
+        destroyed => [],
       });
     }
 
@@ -191,7 +192,7 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       {
         select => [
           'id',
-          qw(me.isActive me.modSeqChanged),
+          qw(me.isActive me.modSeqChanged me.modSeqCreated),
           $rclass->ix_update_extra_select->@*,
         ],
         result_class => 'DBIx::Class::ResultClass::HashRefInflator',
@@ -234,21 +235,24 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       }
     }
 
-    my @changed;
-    my @removed;
+    my (@created, @updated, @destroyed);
+
     for my $item (@rows) {
       if (! $item->{isActive}) {
-        push @removed, lc "$item->{id}";
+        push @destroyed, lc "$item->{id}";
+      } elsif ($rclass->ix_item_created_since($item, $since)) {
+        push @created, lc "$item->{id}";
       } else {
-        push @changed, lc "$item->{id}";
+        push @updated, lc "$item->{id}";
       }
     }
 
     # This is, admittedly, dumb. But, rclasses might do some extra munging
     # with ix_update_extra_*, such that it will return multiple rows for a
     # single id. -- michael, 2018-02-12
-    @removed = uniq @removed;
-    @changed = uniq @changed;
+    @created   = uniq @created;
+    @destroyed = uniq @destroyed;
+    @updated   = uniq @updated;
 
     my @return = $ctx->result($res_type => {
       accountId => $ctx->accountId,
@@ -259,8 +263,9 @@ sub ix_get_updates ($self, $ctx, $arg = {}) {
       hasMoreUpdates => $hasMoreUpdates
                       ? JSON::MaybeXS::JSON->true()
                       : JSON::MaybeXS::JSON->false(),
-      changed => \@changed,
-      removed => \@removed,
+      created => \@created,
+      updated => \@updated,
+      destroyed => \@destroyed,
     });
 
     return @return;

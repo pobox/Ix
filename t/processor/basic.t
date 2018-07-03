@@ -103,7 +103,7 @@ my $ctx = $Bakesale->get_context({
         '#ids' => {
           resultOf => 'a',
           name => 'Cookie/changes',
-          path => '/changed'
+          path => '/created'
         },
       },
       'b',
@@ -250,8 +250,9 @@ my @created_ids;
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
-          changed  => bag($account{cookies}{1}, @created_ids),
-          removed  => bag($account{cookies}{4}),
+          created   => bag(@created_ids),
+          updated   => [ $account{cookies}{1} ],
+          destroyed => bag($account{cookies}{4}),
         },
         'a',
       ],
@@ -308,10 +309,20 @@ subtest "invalid sinceState" => sub {
         '#ids' => {
           resultOf => 'a',
           name => 'Cookie/changes',
-          path => '/changed',
+          path => '/created',
         },
       },
       'b',
+    ],
+    [
+      'Cookie/get' => {
+        '#ids' => {
+          resultOf => 'a',
+          name => 'Cookie/changes',
+          path => '/updated',
+        },
+      },
+      'c',
     ]
   ]);
 
@@ -324,17 +335,25 @@ subtest "invalid sinceState" => sub {
           oldState => 8,
           newState => 9,
           hasMoreUpdates => bool(0),
-          changed  => bag($account{cookies}{1}, @created_ids),
-          removed  => bag($account{cookies}{4}),
+          created   => bag(@created_ids),
+          updated   => [ $account{cookies}{1} ],
+          destroyed => bag($account{cookies}{4}),
         },
         'a',
       ],
       [
         'Cookie/get' => {
           $get_res->[0][1]->%*,
-          list => bag( $get_res->[0][1]{list}->@* ),
+          list => bag( $get_res->[0][1]{list}->@[1..2] ),
         },
         'b',
+      ],
+      [
+        'Cookie/get' => {
+          $get_res->[0][1]->%*,
+          list => bag( $get_res->[0][1]{list}->[0] ),
+        },
+        'c',
       ]
     ],
     "updates can be got with backrefs",
@@ -472,7 +491,7 @@ subtest "invalid sinceState" => sub {
         '#ids' => {
           resultOf => 'a',
           name => 'Cookie/changes',
-          path => '/changed'
+          path => '/created'
         },
       }, 'b',
     ]
@@ -551,7 +570,7 @@ subtest "invalid sinceState" => sub {
         '#ids' => {
           resultOf => 'a',
           name => 'Cookie/changes',
-          path => '/changed',
+          path => '/updated',
         },
       },
       'b',

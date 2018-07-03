@@ -41,7 +41,8 @@ subtest "simple state comparisons" => sub {
     ]);
   }
 
-  my $state = $last_set_res->single_sentence->as_set->new_state . "";
+  my $set_res = $last_set_res->single_sentence->as_set;
+  my $state = $set_res->new_state . "";
 
   subtest "synchronize to current state: no-op" => sub {
     my $res = $jmap_tester->request([
@@ -54,8 +55,9 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 4, "old state: 4");
     is($arg->{newState}, 4, "new state: 4");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    ok(! $arg->{changed}->@*, "no items changed");
-    ok(! $arg->{removed}->@*, "no items removed");
+    ok(! $arg->{created}->@*, "no items created");
+    ok(! $arg->{updated}->@*, "no items updated");
+    ok(! $arg->{destroyed}->@*, "no items destroyed");
   };
 
   subtest "synchronize from lowest state on file" => sub {
@@ -63,7 +65,7 @@ subtest "simple state comparisons" => sub {
       [ 'Cookie/changes' => { sinceState => "0" } ]
     ]);
 
-    ok($res->as_triples->[0][1]{changed}->@*, 'can sync from "0" state');
+    ok($res->as_triples->[0][1]{created}->@*, 'can sync from "0" state');
   };
 
   subtest "synchronize from the future" => sub {
@@ -88,8 +90,9 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 2, "old state: 2");
     is($arg->{newState}, 4, "new state: 4");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    is($arg->{changed}->@*, 20, "20 items changed");
-    ok(! $arg->{removed}->@*,   "no items removed");
+    is($arg->{created}->@*, 20, "20 items created");
+    ok(! $arg->{updated}->@*, "no items updated");
+    ok(! $arg->{destroyed}->@*, "no items destroyed");
   };
 
   subtest "synchronize (2 to 4), maxChanges exceeds changes" => sub {
@@ -103,8 +106,9 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 2, "old state: 2");
     is($arg->{newState}, 4, "new state: 4");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    is($arg->{changed}->@*, 20, "20 items changed");
-    ok(! $arg->{removed}->@*,   "no items removed");
+    is($arg->{created}->@*, 20, "20 items created");
+    is($arg->{updated}->@*, 0, "no items updated");
+    ok(! $arg->{destroyed}->@*, "no items destroyed");
   };
 
   subtest "synchronize (2 to 4), maxChanges equals changes" => sub {
@@ -118,8 +122,9 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 2, "old state: 2");
     is($arg->{newState}, 4, "new state: 4");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    is($arg->{changed}->@*, 20, "20 items changed");
-    ok(! $arg->{removed}->@*,   "no items removed");
+    is($arg->{created}->@*, 20, "20 items created");
+    ok(! $arg->{updated}->@*,   "no items updated");
+    ok(! $arg->{destroyed}->@*,   "no items destroyed");
   };
 
   subtest "synchronize (2 to 4), maxChanges requires truncation" => sub {
@@ -133,8 +138,9 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 2, "old state: 2");
     is($arg->{newState}, 3, "new state: 3");
     ok($arg->{hasMoreUpdates},   "more updates to get");
-    is($arg->{changed}->@*, 10, "10 items changed");
-    ok(! $arg->{removed}->@*,   "no items removed");
+    is($arg->{created}->@*, 10, "10 items created");
+    ok(! $arg->{updated}->@*,   "no items updated");
+    ok(! $arg->{destroyed}->@*,   "no items destroyed");
   };
 
   subtest "synchronize (2 to 4), maxChanges must be exceeded" => sub {
@@ -148,8 +154,43 @@ subtest "simple state comparisons" => sub {
     is($arg->{oldState}, 2, "old state: 2");
     is($arg->{newState}, 3, "new state: 3");
     ok($arg->{hasMoreUpdates},   "more updates to get");
-    is($arg->{changed}->@*, 10, "10 items changed");
-    ok(! $arg->{removed}->@*,   "no items removed");
+    is($arg->{created}->@*, 10, "10 items created");
+    ok(! $arg->{updated}->@*,   "no items updated");
+    ok(! $arg->{destroyed}->@*,   "no items destroyed");
+  };
+
+  subtest "make some updates, synchronize (4 to 5)" => sub {
+    # get a random cookie to play with
+    my $creation_id = [ keys $set_res->created->%* ]->[0];
+    my $cookie = $set_res->created->{$creation_id};
+
+    my $update_res = $jmap_tester->request([[
+      'Cookie/set' => {
+        update => {
+          $cookie->{id} => { delicious => 'no' },
+        },
+      },
+    ]])->single_sentence->as_set;
+
+    ok(exists $update_res->updated->{$cookie->{id}}, 'we updated our cookie');
+
+    my $new_state = $update_res->arguments->{newState};
+    is($new_state, 5, "new state is correct");
+
+    my $change_res = $jmap_tester->request([
+      [ 'Cookie/changes' => { sinceState => "4" } ]
+    ]);
+
+    my ($type, $arg) = $change_res->single_sentence->as_triple->@*;
+    is($type, 'Cookie/changes', 'cookie changes!!');
+
+    is($arg->{oldState}, 4, "old state: 4");
+    is($arg->{newState}, 5, "new state: 5");
+    ok(! $arg->{created}->@*, "no items created");
+    ok(! $arg->{destroyed}->@*,  "no items destroyed");
+
+    is($arg->{updated}->@*, 1, "one item updated");
+    is($arg->{updated}->[0], $cookie->{id}, "updated item is our cookie");
   };
 };
 
@@ -225,8 +266,9 @@ subtest "complex state comparisons" => sub {
     is($arg->{oldState}, '5-6', "old state: 5-6");
     is($arg->{newState}, '5-6', "new state: 5-6");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    ok(! $arg->{changed}->@*, "no items changed");
-    ok(! $arg->{removed}->@*, "no items removed");
+    ok(! $arg->{created}->@*, "no items created");
+    ok(! $arg->{updated}->@*, "no items updated");
+    ok(! $arg->{destroyed}->@*, "no items destroyed");
   };
 
   subtest "synchronize from non-compound state" => sub {
@@ -235,7 +277,7 @@ subtest "complex state comparisons" => sub {
     ]);
 
     my ($type, $arg) = $res->single_sentence->as_triple->@*;
-    is($type, 'error', 'can not sync from non-compount state');
+    is($type, 'error', 'can not sync from non-compound state');
 
     is($arg->{type}, "invalidArguments", "error type");
   };
@@ -273,15 +315,15 @@ subtest "complex state comparisons" => sub {
     is($arg->{oldState}, '4-6', "old state: 4-6");
     is($arg->{newState}, '5-6', "new state: 5-6");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    is($arg->{changed}->@*, 5, "5 items changed");
+    is($arg->{created}->@*, 5, "5 items created");
 
     is_deeply(
-      [ sort $arg->{changed}->@* ],
+      [ sort $arg->{created}->@* ],
       [ sort @cake_id{qw( C4R1 C4R2 C4R3 C4R4 C4R5 )} ],
       "the five expected items updated",
     );
 
-    ok(! $arg->{removed}->@*,   "no items removed");
+    ok(! $arg->{destroyed}->@*,   "no items destroyed");
   };
 
   subtest "synchronize (5-5 to 5-6), no maxChanges" => sub {
@@ -295,21 +337,21 @@ subtest "complex state comparisons" => sub {
     is($arg->{oldState}, '5-5', "old state: 5-5");
     is($arg->{newState}, '5-6', "new state: 5-6");
     ok( ! $arg->{hasMoreUpdates}, "no more updates");
-    is($arg->{changed}->@*, 4, "4 items changed");
+    is($arg->{updated}->@*, 4, "4 items changed");
 
     is_deeply(
-      [ sort $arg->{changed}->@* ],
+      [ sort $arg->{updated}->@* ],
       [ sort @cake_id{qw( C1R5 C2R5 C3R5 C4R5 )} ],
       "the five expected items updated",
     );
 
-    ok(! $arg->{removed}->@*,   "no items removed");
+    ok(! $arg->{destroyed}->@*,   "no items destroyed");
   };
 
   for my $test (
     [ "sync (4-5 to 5-6), no maxChanges",              {} ],
     [ "sync (4-5 to 5-6), maxChanges exceeds updates", { maxChanges => 10 } ],
-    [ "sync (4-5 to 5-6), maxChanges qeuals updates",  { maxChanges =>  8 } ],
+    [ "sync (4-5 to 5-6), maxChanges equals updates",  { maxChanges =>  8 } ],
   ) {
     subtest $test->[0] => sub {
       my $res = $jmap_tester->request([
@@ -322,16 +364,25 @@ subtest "complex state comparisons" => sub {
       is($arg->{oldState}, '4-5', "old state: 4-5");
       is($arg->{newState}, '5-6', "new state: 5-6");
       ok( ! $arg->{hasMoreUpdates}, "no more updates");
-      is($arg->{changed}->@*, 8, "8 items changed");
+
+      # Ok, so. We created 5 cakes at state 4-6, which bumps our state to 5-6.
+      # But because in this complex state, we return both parts if either part
+      # changed (all the cakes were created since recipe state 5), we're gonna
+      # return all of them here. That means that 5 of them will be created
+      # (because the cakes themselves were created, and the others will come
+      # back as updated, because that's the only reasonable thing we can do,
+      # if we're committed to returning them all. -- michael, 2018-07-03
+      is($arg->{created}->@*, 5, "5 items changed");
+      is($arg->{updated}->@*, 3, "3 items updated");
 
       is_deeply(
-        [ sort $arg->{changed}->@* ],
+        [ sort $arg->{created}->@*, $arg->{updated}->@* ],
         [ sort @cake_id{qw( C4R1 C4R2 C4R3 C4R4 C4R5
                             C1R5 C2R5 C3R5 )} ],
         "the eight expected items updated",
       );
 
-      ok(! $arg->{removed}->@*,   "no items removed");
+      ok(! $arg->{destroyed}->@*,   "no items destroyed");
     };
   }
 
@@ -352,9 +403,9 @@ subtest "complex state comparisons" => sub {
         "new state: $arg->{newState}",
       );
       ok($arg->{hasMoreUpdates},  "more updates await");
-      ok(! $arg->{removed}->@*,   "no items removed");
+      ok(! $arg->{destroyed}->@*,   "no items destroyed");
 
-      my @changed = $arg->{changed}->@*;
+      my @changed = ($arg->{created}->@*, $arg->{updated}->@*);
       cmp_ok(@changed, '<=', 5, "<= 5 items changed");
 
       $changed{ $cake_id_rev{$_} }++ for @changed;
@@ -371,12 +422,12 @@ subtest "complex state comparisons" => sub {
 
       is($arg->{oldState}, $mid_state, "old state: $mid_state");
       ok(! $arg->{hasMoreUpdates},  "no more updates");
-      ok(! $arg->{removed}->@*,   "no items removed");
+      ok(! $arg->{destroyed}->@*,   "no items destroyed");
 
-      my @changed = $arg->{changed}->@*;
+      my @changed = ($arg->{created}->@*, $arg->{updated}->@*);
       cmp_ok(@changed, '<=', 5, "<= 5 items changed");
 
-      $changed{ $cake_id_rev{$_} }++ for $arg->{changed}->@*;
+      $changed{ $cake_id_rev{$_} }++ for @changed;
     };
 
     is(keys %changed, 8, "eight total updates (with maybe some dupes)");
@@ -404,9 +455,9 @@ subtest "complex state comparisons" => sub {
         "new state: $arg->{newState}",
       );
       ok($arg->{hasMoreUpdates},  "more updates await");
-      ok(! $arg->{removed}->@*,   "no items removed");
+      ok(! $arg->{destroyed}->@*,   "no items destroyed");
 
-      my @changed = $arg->{changed}->@*;
+      my @changed = ($arg->{created}->@*, $arg->{updated}->@*);
       cmp_ok(@changed, '<=', 5, "<= 5 items changed");
 
       $changed{ $cake_id_rev{$_} }++ for @changed;
@@ -423,12 +474,12 @@ subtest "complex state comparisons" => sub {
 
       is($arg->{oldState}, $mid_state, "old state: $mid_state");
       ok(! $arg->{hasMoreUpdates},  "no more updates");
-      ok(! $arg->{removed}->@*,   "no items removed");
+      ok(! $arg->{destroyed}->@*,   "no items destroyed");
 
-      my @changed = $arg->{changed}->@*;
+      my @changed = ($arg->{created}->@*, $arg->{updated}->@*);
       cmp_ok(@changed, '<=', 5, "<= 5 items changed");
 
-      $changed{ $cake_id_rev{$_} }++ for $arg->{changed}->@*;
+      $changed{ $cake_id_rev{$_} }++ for @changed;
     };
 
     is(keys %changed, 8, "eight total updates (with maybe some dupes)");

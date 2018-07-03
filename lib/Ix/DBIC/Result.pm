@@ -338,6 +338,10 @@ sub ix_highest_state ($self, $since, $rows) {
   return $rows->[-1]{$state_string_field};
 }
 
+sub ix_item_created_since ($self, $item, $since) {
+  return $item->{modSeqCreated} > $since;
+}
+
 sub ix_update_single_state_conds ($self, $example_row) {
   return { 'me.modSeqChanged' => $example_row->{modSeqChanged} }
 }

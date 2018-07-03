@@ -87,6 +87,11 @@ sub ix_compare_state ($self, $since, $state) {
 
 sub ix_update_state_string_field { 'jointModSeq' }
 
+sub ix_item_created_since ($self, $item, $since) {
+  my ($cake_since,  $recipe_since)  = split /-/, $since, 2;
+  return $item->{modSeqCreated} > $cake_since;
+}
+
 sub ix_highest_state ($self, $since, $rows) {
   my ($cake_since,  $recipe_since)  = split /-/, $since, 2;
 
