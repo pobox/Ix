@@ -8,6 +8,7 @@ use lib 't/lib';
 use Bakesale;
 use Bakesale::App;
 use Bakesale::Schema;
+use Test::Deep;
 use Test::More;
 use Ix::Util qw(ix_new_id);
 
@@ -36,6 +37,29 @@ my ($app, $jmap_tester) = Bakesale::Test->new_test_app_and_tester;
 
   is($res->header('Vary'), 'Origin', 'Vary header is correct');
   ok($res->header('Ix-Transaction-ID'), 'we have a request guid!');
+}
+
+{
+  my $ctx = $app->processor->get_system_context;
+  $ctx = $ctx->with_account('generic' => 'some-id');
+
+  my $res1 = $ctx->result('Foo/get' => { arg => 'value' });
+
+  cmp_deeply(
+    $res1->result_arguments,
+    {
+      accountId => 'some-id',
+      arg => 'value',
+    },
+    '->result adds our account id',
+  );
+
+  my $res2 = $ctx->result_without_accountid('Foo/get' => { arg => 'value' });
+  cmp_deeply(
+    $res2->result_arguments,
+    { arg => 'value' },
+    '->result_without_accountid does not add an account id',
+  );
 }
 
 done_testing;

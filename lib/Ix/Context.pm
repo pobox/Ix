@@ -150,6 +150,10 @@ sub result ($ctx, $type, $prop = {}) {
   });
 }
 
+sub result_without_accountid ($ctx, $type, $prop = {}) {
+  return $ctx->result($type, $prop);
+}
+
 sub may_call { 1 }
 
 1;

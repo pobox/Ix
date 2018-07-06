@@ -36,7 +36,6 @@ has root_context => (
 
     error
     internal_error
-    result
 
     results_so_far
 
@@ -170,6 +169,18 @@ sub with_account ($self, $account_type, $accountId) {
   }
 
   $self->internal_error("conflicting recontextualization")->throw;
+}
+
+sub result ($self, $type, $prop = {}) {
+  $self->internal_error("got conflicting accountIds")
+    if (exists $prop->{accountId} && $prop->{accountId} ne $self->accountId);
+
+  $prop->{accountId} = $self->accountId;
+  return $self->root_context->result($type, $prop);
+}
+
+sub result_without_accountid ($self, $type, $prop={}) {
+  return $self->root_context->result($type, $prop);
 }
 
 1;
