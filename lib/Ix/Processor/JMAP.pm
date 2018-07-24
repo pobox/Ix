@@ -200,7 +200,7 @@ sub handle_calls ($self, $ctx, $calls, $arg = {}) {
     unless (@rv) {
       @rv = try {
         unless ($ctx->may_call($method, $arg)) {
-          return $ctx->error(invalidPermissions => {
+          return $ctx->error(forbidden => {
             description => "you are not authorized to make this call",
           });
         }
