@@ -72,6 +72,9 @@ capture_stderr(sub {
         }
       }, "my id"
     ],
+    [
+      q{`cat /etc/passwd`} => {}, 'x',
+    ]
   ]);
 });
 
@@ -85,6 +88,11 @@ cmp_deeply(
           yum => { guid => ignore(), type => 'internalError' },
         },
       }), 'my id'
+    ],
+    [
+      error => {
+        type => 'unknownMethod',
+      }, 'x'
     ]
   ],
   "errors bubble up"
@@ -114,6 +122,9 @@ for my $line (@lines) {
         call_info => [
           [
             'Cake/set' => { elapsed_seconds => $elapsed_re },
+          ],
+          [
+            'IX_INTERNAL/unknownMethod' => { elapsed_seconds => $elapsed_re },
           ],
         ],
         exception_guids => [ re('[A-Z0-9-]+'), re('[A-Z0-9-]+') ],
